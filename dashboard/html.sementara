@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmartScope — Smartphone Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0c10;--surface:#111318;--surface2:#181c24;--surface3:#1e2330;
+  --border:#252c3a;--border2:#2e3749;
+  --text:#e8edf5;--text2:#8892a4;--text3:#4a5568;
+  --blue:#4f8ef7;--blue2:#2563eb;--blue-dim:#1a2d5a;
+  --green:#22d09a;--green-dim:#0d3326;
+  --red:#f76f6f;--red-dim:#3a1a1a;
+  --amber:#f5a623;--amber-dim:#3a2808;
+  --purple:#a78bfa;--purple-dim:#2d1f5e;
+  --accent:#4f8ef7;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+ 
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:56px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;letter-spacing:-0.5px;color:var(--text)}
+.logo span{color:var(--blue)}
+.tagline{font-size:11px;color:var(--text3);margin-top:1px}
+.search-wrap{position:relative;flex:1;max-width:360px;margin:0 24px}
+.search-wrap input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 36px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;transition:.2s}
+.search-wrap input:focus{border-color:var(--blue);background:var(--surface3)}
+.search-wrap input::placeholder{color:var(--text3)}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px}
+.search-results{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:6px;z-index:200;display:none;max-height:240px;overflow-y:auto}
+.search-result-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;transition:.15s;display:flex;align-items:center;gap:8px}
+.search-result-item:hover{background:var(--surface3)}
+.search-result-item .sr-tag{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--blue-dim);color:var(--blue)}
+.badge-live{background:var(--green-dim);color:var(--green);font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
+ 
+/* NAV TABS */
+.nav-tabs{display:flex;gap:4px;padding:0 28px;background:var(--surface);border-bottom:1px solid var(--border)}
+.nav-tab{padding:12px 16px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+ 
+/* LAYOUT */
+.main{display:flex;min-height:calc(100vh - 112px)}
+.sidebar{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:16px;overflow-y:auto}
+.content{flex:1;padding:20px 24px;overflow-x:hidden}
+ 
+/* FILTER GROUPS */
+.filter-group{margin-bottom:18px}
+.filter-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px}
+.filter-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;border:1px solid var(--border);background:var(--surface2);color:var(--text2);margin:3px;transition:.15s;user-select:none}
+.filter-chip:hover{border-color:var(--border2);color:var(--text)}
+.filter-chip.active{background:var(--blue-dim);border-color:var(--blue);color:var(--blue)}
+.filter-chip.ch-active{background:var(--purple-dim);border-color:var(--purple);color:var(--purple)}
+.filter-chip.ec-active{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.filter-dot{width:7px;height:7px;border-radius:50%}
+.reset-btn{width:100%;padding:8px;background:none;border:1px solid var(--border);border-radius:7px;color:var(--text2);font-size:12px;cursor:pointer;margin-top:8px;transition:.2s;font-family:'DM Sans',sans-serif}
+.reset-btn:hover{background:var(--surface3);color:var(--text)}
+ 
+/* PAGE PANELS */
+.page{display:none}
+.page.active{display:block}
+ 
+/* SCORECARD GRID */
+.scorecard-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.scard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden;transition:.2s}
+.scard:hover{border-color:var(--border2);transform:translateY(-1px)}
+.scard::after{content:'';position:absolute;top:0;right:0;width:3px;height:100%;border-radius:0 12px 12px 0}
+.scard.v-volume::after{background:var(--blue)}
+.scard.v-velocity::after{background:var(--green)}
+.scard.v-variety::after{background:var(--purple)}
+.scard.v-veracity::after{background:var(--amber)}
+.scard.v-variability::after{background:var(--red)}
+.scard.v-validity::after{background:#22d0c8}
+.scard.v-value::after{background:#f77bf7}
+.scard.v-visualization::after{background:#f7a94f}
+.scard-v{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:4px}
+.scard-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--text);line-height:1}
+.scard-lbl{font-size:11px;color:var(--text2);margin-top:4px}
+ 
+/* SECTION */
+.section-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title .stag{font-size:10px;font-weight:500;padding:3px 8px;border-radius:5px;font-family:'DM Sans',sans-serif}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:16px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.chart-card-title{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+ 
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);border-bottom:1px solid var(--border)}
+.data-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);transition:.15s}
+.data-table tr:hover td{background:var(--surface2)}
+.data-table tr:last-child td{border-bottom:none}
+ 
+/* BRAND BADGE */
+.brand-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:500}
+.sent-pos{background:var(--green-dim);color:var(--green)}
+.sent-neg{background:var(--red-dim);color:var(--red)}
+.sent-net{background:var(--surface2);color:var(--text2)}
+ 
+/* INSIGHT CARDS */
+.insight-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.insight-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;border-left:3px solid}
+.insight-card.ins-blue{border-left-color:var(--blue)}
+.insight-card.ins-green{border-left-color:var(--green)}
+.insight-card.ins-red{border-left-color:var(--red)}
+.insight-card.ins-amber{border-left-color:var(--amber)}
+.insight-num{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;line-height:1}
+.insight-lbl{font-size:11px;color:var(--text2);margin-top:4px;line-height:1.4}
+ 
+/* QUADRANT */
+.quadrant-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.quad-card{border-radius:10px;padding:14px;border:1px solid}
+.quad-star{background:rgba(34,208,154,.06);border-color:rgba(34,208,154,.3)}
+.quad-gem{background:rgba(79,142,247,.06);border-color:rgba(79,142,247,.3)}
+.quad-over{background:rgba(247,165,35,.06);border-color:rgba(247,165,35,.3)}
+.quad-need{background:rgba(247,111,111,.06);border-color:rgba(247,111,111,.3)}
+.quad-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.quad-star .quad-title{color:var(--green)}
+.quad-gem .quad-title{color:var(--blue)}
+.quad-over .quad-title{color:var(--amber)}
+.quad-need .quad-title{color:var(--red)}
+.quad-brands{display:flex;flex-wrap:wrap;gap:4px}
+.quad-brand-pill{font-size:11px;padding:3px 9px;border-radius:5px;font-weight:500}
+.quad-star .quad-brand-pill{background:var(--green-dim);color:var(--green)}
+.quad-gem .quad-brand-pill{background:var(--blue-dim);color:var(--blue)}
+.quad-over .quad-brand-pill{background:var(--amber-dim);color:var(--amber)}
+.quad-need .quad-brand-pill{background:var(--red-dim);color:var(--red)}
+.quad-desc{font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5}
+ 
+/* SELECTED BRAND DETAIL */
+.brand-detail-header{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:14px;display:flex;align-items:center;gap:20px}
+.brand-avatar{width:52px;height:52px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:18px;font-weight:800;flex-shrink:0}
+.brand-stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+.bstat{text-align:center}
+.bstat-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:700}
+.bstat-lbl{font-size:10px;color:var(--text3);margin-top:2px}
+ 
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+ 
+/* TOOLTIP */
+.tooltip{position:fixed;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:8px 12px;font-size:12px;pointer-events:none;z-index:999;display:none;max-width:200px;line-height:1.5}
+ 
+/* Radar canvas */
+canvas{display:block}
+ 
+/* LOADING */
+.skeleton{background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:6px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+ 
+/* ANIMATE IN */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeUp .3s ease both}
+ 
+.no-data{text-align:center;padding:32px;color:var(--text3);font-size:13px}
+</style>
+</head>
+<body>
+ 
+<!-- TOPBAR -->
+<div class="topbar">
+  <div>
+    <div class="logo">Smart<span>Scope</span></div>
+    <div class="tagline">Smartphone Intelligence Dashboard</div>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="globalSearch" placeholder="Cari brand, insight, metrik..." autocomplete="off">
+    <div class="search-results" id="searchResults"></div>
+  </div>
+  <div class="badge-live">● Live Data</div>
+</div>
+ 
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="switchPage('overview')">Overview & 8V</div>
+  <div class="nav-tab" onclick="switchPage('sentiment')">Sentiment Analysis</div>
+  <div class="nav-tab" onclick="switchPage('ecommerce')">E-Commerce EDA</div>
+  <div class="nav-tab" onclick="switchPage('correlation')">Korelasi & Gap</div>
+</div>
+ 
+<div class="main">
+ 
+<!-- SIDEBAR FILTERS -->
+<div class="sidebar">
+  <div class="filter-group">
+    <div class="filter-label">Brand</div>
+    <div id="brandFilters"></div>
+  </div>
+  <div class="filter-group">
+    <div class="filter-label">YouTube Channel</div>
+    <div id="channelFilters"></div>
+  </div>
+  <div class="filter-group">
+    <div class="filter-label">E-Commerce Platform</div>
+    <div id="platformFilters"></div>
+  </div>
+  <button class="reset-btn" onclick="resetFilters()">↺ Reset Semua Filter</button>
+ 
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+    <div class="filter-label">Brand Terpilih</div>
+    <div id="selectedBrandInfo" style="font-size:12px;color:var(--text2);line-height:1.6;margin-top:6px">Pilih brand untuk detail</div>
+  </div>
+</div>
+ 
+<!-- CONTENT -->
+<div class="content">
+ 
+<!-- PAGE: OVERVIEW -->
+<div class="page active" id="page-overview">
+  <div class="scorecard-grid" id="scorecards"></div>
+  <div class="grid2">
+    <div class="chart-card">
+      <div class="chart-card-title"><span>Distribusi Data per Platform</span><span style="font-size:10px;color:var(--text3)">E-Commerce</span></div>
+      <canvas id="chartPlatform" height="180"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title"><span>Komentar per Channel YouTube</span><span style="font-size:10px;color:var(--text3)">Sentiment</span></div>
+      <canvas id="chartChannel" height="180"></canvas>
+    </div>
+  </div>
+  <div class="chart-card" style="margin-bottom:14px">
+    <div class="chart-card-title"><span>Volume Komentar per Brand (dengan threshold 30 komentar)</span></div>
+    <canvas id="chartVolumeBrand" height="160"></canvas>
+  </div>
+  <div class="insight-grid" id="overviewInsights"></div>
+</div>
+ 
+<!-- PAGE: SENTIMENT -->
+<div class="page" id="page-sentiment">
+  <div id="brandDetailSection"></div>
+  <div class="grid2" style="margin-bottom:14px">
+    <div class="chart-card">
+      <div class="chart-card-title"><span>Distribusi Sentimen per Brand</span></div>
+      <canvas id="chartSentBrand" height="220"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title"><span>Sentimen Keseluruhan</span></div>
+      <canvas id="chartSentOverall" height="220"></canvas>
+    </div>
+  </div>
+  <div class="chart-card" style="margin-bottom:14px">
+    <div class="chart-card-title"><span>Breakdown per Brand per Channel</span></div>
+    <canvas id="chartSentChannel" height="200"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-card-title"><span>Weighted Sentiment Score per Brand</span><span style="font-size:10px;color:var(--text3)">score × log(1+n_komentar)</span></div>
+    <div style="overflow-x:auto"><table class="data-table" id="weightedTable"></table></div>
+  </div>
+</div>
+ 
+<!-- PAGE: ECOMMERCE -->
+<div class="page" id="page-ecommerce">
+  <div class="grid3" style="margin-bottom:14px">
+    <div class="chart-card">
+      <div class="chart-card-title"><span>Total Penjualan per Brand</span></div>
+      <canvas id="chartTerjual" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title"><span>Rata-rata Harga per Brand (juta Rp)</span></div>
+      <canvas id="chartHarga" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title"><span>Rata-rata Rating per Brand</span></div>
+      <canvas id="chartRating" height="200"></canvas>
+    </div>
+  </div>
+  <div class="chart-card" style="margin-bottom:14px">
+    <div class="chart-card-title"><span>Scatter: Harga vs Total Penjualan</span><span style="font-size:10px;color:var(--text3)">Apakah mahal = laku?</span></div>
+    <canvas id="chartScatter" height="200"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-card-title"><span>Detail E-Commerce per Brand per Platform</span></div>
+    <div style="overflow-x:auto"><table class="data-table" id="ecTable"></table></div>
+  </div>
+</div>
+ 
+<!-- PAGE: CORRELATION -->
+<div class="page" id="page-correlation">
+  <div class="grid2" style="margin-bottom:14px">
+    <div class="chart-card">
+      <div class="chart-card-title"><span>Composite Score Ranking</span><span style="font-size:10px;color:var(--text3)">40% sentimen + 30% penjualan + 20% rating + 10% value harga</span></div>
+      <canvas id="chartComposite" height="240"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title"><span>Radar Chart: Top 3 Brand</span><span style="font-size:10px;color:var(--text3)">5 dimensi</span></div>
+      <canvas id="chartRadar" height="240"></canvas>
+    </div>
+  </div>
+  <div class="chart-card" style="margin-bottom:14px">
+    <div class="chart-card-title"><span>Bubble Chart: Sentiment vs Penjualan</span><span style="font-size:10px;color:var(--text3)">Ukuran = jumlah listing</span></div>
+    <canvas id="chartBubble" height="220"></canvas>
+  </div>
+  <div class="section-title">Gap Analysis — 4 Kuadran <span class="stag" style="background:var(--blue-dim);color:var(--blue)">Advanced</span></div>
+  <div class="quadrant-wrap" id="quadrantWrap"></div>
+</div>
+ 
+</div>
+</div>
+ 
+<div class="tooltip" id="tooltip"></div>
+ 
+<script>
+const RAW_SENTIMENT = [{"brand":"ASUS","channel":"DKID Media","sentiment":"netral","count":1},{"brand":"ASUS","channel":"Jagat Review","sentiment":"negatif","count":1},{"brand":"ASUS","channel":"Jagat Review","sentiment":"netral","count":3},{"brand":"ASUS","channel":"Jagat Review","sentiment":"positif","count":2},{"brand":"ASUS","channel":"gadgetin","sentiment":"netral","count":9},{"brand":"ASUS","channel":"gadgetin","sentiment":"positif","count":3},{"brand":"Infinix","channel":"DKID Media","sentiment":"netral","count":30},{"brand":"Infinix","channel":"DKID Media","sentiment":"positif","count":4},{"brand":"Infinix","channel":"Jagat Review","sentiment":"negatif","count":1},{"brand":"Infinix","channel":"Jagat Review","sentiment":"netral","count":44},{"brand":"Infinix","channel":"Jagat Review","sentiment":"positif","count":6},{"brand":"Infinix","channel":"Pixa Focus ID","sentiment":"netral","count":7},{"brand":"Infinix","channel":"gadgetin","sentiment":"negatif","count":10},{"brand":"Infinix","channel":"gadgetin","sentiment":"netral","count":332},{"brand":"Infinix","channel":"gadgetin","sentiment":"positif","count":56},{"brand":"OPPO","channel":"DKID Media","sentiment":"netral","count":4},{"brand":"OPPO","channel":"Jagat Review","sentiment":"netral","count":6},{"brand":"OPPO","channel":"Jagat Review","sentiment":"positif","count":3},{"brand":"OPPO","channel":"Pixa Focus ID","sentiment":"negatif","count":1},{"brand":"OPPO","channel":"Pixa Focus ID","sentiment":"netral","count":24},{"brand":"OPPO","channel":"Pixa Focus ID","sentiment":"positif","count":9},{"brand":"OPPO","channel":"gadgetin","sentiment":"negatif","count":3},{"brand":"OPPO","channel":"gadgetin","sentiment":"netral","count":130},{"brand":"OPPO","channel":"gadgetin","sentiment":"positif","count":9},{"brand":"POCO","channel":"DKID Media","sentiment":"netral","count":5},{"brand":"POCO","channel":"DKID Media","sentiment":"positif","count":1},{"brand":"POCO","channel":"Jagat Review","sentiment":"negatif","count":2},{"brand":"POCO","channel":"Jagat Review","sentiment":"netral","count":84},{"brand":"POCO","channel":"Jagat Review","sentiment":"positif","count":13},{"brand":"POCO","channel":"Pixa Focus ID","sentiment":"netral","count":19},{"brand":"POCO","channel":"Pixa Focus ID","sentiment":"positif","count":5},{"brand":"POCO","channel":"gadgetin","sentiment":"negatif","count":7},{"brand":"POCO","channel":"gadgetin","sentiment":"netral","count":399},{"brand":"POCO","channel":"gadgetin","sentiment":"positif","count":44},{"brand":"Realme","channel":"DKID Media","sentiment":"netral","count":4},{"brand":"Realme","channel":"Jagat Review","sentiment":"negatif","count":1},{"brand":"Realme","channel":"Jagat Review","sentiment":"netral","count":30},{"brand":"Realme","channel":"Jagat Review","sentiment":"positif","count":3},{"brand":"Realme","channel":"Pixa Focus ID","sentiment":"negatif","count":2},{"brand":"Realme","channel":"Pixa Focus ID","sentiment":"netral","count":11},{"brand":"Realme","channel":"gadgetin","sentiment":"negatif","count":4},{"brand":"Realme","channel":"gadgetin","sentiment":"netral","count":87},{"brand":"Realme","channel":"gadgetin","sentiment":"positif","count":14},{"brand":"Samsung","channel":"DKID Media","sentiment":"negatif","count":1},{"brand":"Samsung","channel":"DKID Media","sentiment":"netral","count":5},{"brand":"Samsung","channel":"Jagat Review","sentiment":"negatif","count":4},{"brand":"Samsung","channel":"Jagat Review","sentiment":"netral","count":52},{"brand":"Samsung","channel":"Jagat Review","sentiment":"positif","count":15},{"brand":"Samsung","channel":"Pixa Focus ID","sentiment":"netral","count":11},{"brand":"Samsung","channel":"Pixa Focus ID","sentiment":"positif","count":4},{"brand":"Samsung","channel":"gadgetin","sentiment":"negatif","count":9},{"brand":"Samsung","channel":"gadgetin","sentiment":"netral","count":271},{"brand":"Samsung","channel":"gadgetin","sentiment":"positif","count":44},{"brand":"Tecno","channel":"DKID Media","sentiment":"netral","count":9},{"brand":"Tecno","channel":"DKID Media","sentiment":"positif","count":2},{"brand":"Tecno","channel":"Jagat Review","sentiment":"negatif","count":1},{"brand":"Tecno","channel":"Jagat Review","sentiment":"netral","count":33},{"brand":"Tecno","channel":"Jagat Review","sentiment":"positif","count":6},{"brand":"Tecno","channel":"Pixa Focus ID","sentiment":"netral","count":14},{"brand":"Tecno","channel":"Pixa Focus ID","sentiment":"positif","count":3},{"brand":"Tecno","channel":"gadgetin","sentiment":"negatif","count":2},{"brand":"Tecno","channel":"gadgetin","sentiment":"netral","count":106},{"brand":"Tecno","channel":"gadgetin","sentiment":"positif","count":22},{"brand":"Xiaomi","channel":"DKID Media","sentiment":"netral","count":1},{"brand":"Xiaomi","channel":"Jagat Review","sentiment":"netral","count":8},{"brand":"Xiaomi","channel":"Jagat Review","sentiment":"positif","count":2},{"brand":"Xiaomi","channel":"Pixa Focus ID","sentiment":"negatif","count":2},{"brand":"Xiaomi","channel":"Pixa Focus ID","sentiment":"netral","count":19},{"brand":"Xiaomi","channel":"Pixa Focus ID","sentiment":"positif","count":15},{"brand":"Xiaomi","channel":"gadgetin","sentiment":"negatif","count":3},{"brand":"Xiaomi","channel":"gadgetin","sentiment":"netral","count":118},{"brand":"Xiaomi","channel":"gadgetin","sentiment":"positif","count":20},{"brand":"iPhone","channel":"DKID Media","sentiment":"netral","count":4},{"brand":"iPhone","channel":"Jagat Review","sentiment":"netral","count":5},{"brand":"iPhone","channel":"Jagat Review","sentiment":"positif","count":1},{"brand":"iPhone","channel":"Pixa Focus ID","sentiment":"negatif","count":1},{"brand":"iPhone","channel":"Pixa Focus ID","sentiment":"netral","count":11},{"brand":"iPhone","channel":"Pixa Focus ID","sentiment":"positif","count":4},{"brand":"iPhone","channel":"gadgetin","sentiment":"negatif","count":1},{"brand":"iPhone","channel":"gadgetin","sentiment":"netral","count":84},{"brand":"iPhone","channel":"gadgetin","sentiment":"positif","count":15},{"brand":"vivo","channel":"DKID Media","sentiment":"negatif","count":1},{"brand":"vivo","channel":"DKID Media","sentiment":"netral","count":4},{"brand":"vivo","channel":"Jagat Review","sentiment":"netral","count":11},{"brand":"vivo","channel":"Jagat Review","sentiment":"positif","count":3},{"brand":"vivo","channel":"Pixa Focus ID","sentiment":"negatif","count":1},{"brand":"vivo","channel":"Pixa Focus ID","sentiment":"netral","count":39},{"brand":"vivo","channel":"Pixa Focus ID","sentiment":"positif","count":20},{"brand":"vivo","channel":"gadgetin","sentiment":"netral","count":87},{"brand":"vivo","channel":"gadgetin","sentiment":"positif","count":9}];
+ 
+const RAW_EC = [{"brand":"ASUS","ecommerce":"Lazada","listings":21,"avg_price":58846936,"avg_rating":4.9,"total_terjual":121},{"brand":"ASUS","ecommerce":"Shopee","listings":1,"avg_price":46990000,"avg_rating":4.9,"total_terjual":49},{"brand":"Infinix","ecommerce":"Lazada","listings":498,"avg_price":17561797,"avg_rating":4.18,"total_terjual":140880},{"brand":"Infinix","ecommerce":"Shopee","listings":98,"avg_price":24864876,"avg_rating":4.9,"total_terjual":159021},{"brand":"Infinix","ecommerce":"Tokopedia","listings":75,"avg_price":18312425,"avg_rating":4.85,"total_terjual":24809},{"brand":"OPPO","ecommerce":"Lazada","listings":452,"avg_price":29646145,"avg_rating":4.22,"total_terjual":97647},{"brand":"OPPO","ecommerce":"Shopee","listings":76,"avg_price":40084478,"avg_rating":4.9,"total_terjual":73371},{"brand":"OPPO","ecommerce":"Tokopedia","listings":32,"avg_price":28277525,"avg_rating":4.61,"total_terjual":3620},{"brand":"POCO","ecommerce":"Lazada","listings":116,"avg_price":31402023,"avg_rating":4.32,"total_terjual":24338},{"brand":"POCO","ecommerce":"Shopee","listings":37,"avg_price":39259570,"avg_rating":4.94,"total_terjual":50504},{"brand":"POCO","ecommerce":"Tokopedia","listings":18,"avg_price":20110824,"avg_rating":4.96,"total_terjual":19324},{"brand":"Realme","ecommerce":"Lazada","listings":417,"avg_price":24239683,"avg_rating":4.24,"total_terjual":25680},{"brand":"Realme","ecommerce":"Shopee","listings":72,"avg_price":21641348,"avg_rating":4.88,"total_terjual":29348},{"brand":"Realme","ecommerce":"Tokopedia","listings":47,"avg_price":49899804,"avg_rating":4.91,"total_terjual":4912},{"brand":"Samsung","ecommerce":"Lazada","listings":625,"avg_price":40474629,"avg_rating":4.32,"total_terjual":105426},{"brand":"Samsung","ecommerce":"Shopee","listings":266,"avg_price":43731976,"avg_rating":4.91,"total_terjual":289263},{"brand":"Samsung","ecommerce":"Tokopedia","listings":85,"avg_price":41600957,"avg_rating":4.92,"total_terjual":72954},{"brand":"Tecno","ecommerce":"Lazada","listings":342,"avg_price":26173241,"avg_rating":4.48,"total_terjual":4888},{"brand":"Tecno","ecommerce":"Shopee","listings":74,"avg_price":22430068,"avg_rating":4.93,"total_terjual":43404},{"brand":"Tecno","ecommerce":"Tokopedia","listings":18,"avg_price":24349477,"avg_rating":4.79,"total_terjual":7039},{"brand":"Xiaomi","ecommerce":"Lazada","listings":382,"avg_price":31774415,"avg_rating":4.05,"total_terjual":357497},{"brand":"Xiaomi","ecommerce":"Shopee","listings":197,"avg_price":33847653,"avg_rating":4.94,"total_terjual":332938},{"brand":"Xiaomi","ecommerce":"Tokopedia","listings":53,"avg_price":24907988,"avg_rating":4.88,"total_terjual":34318},{"brand":"iPhone","ecommerce":"Lazada","listings":37,"avg_price":157705432,"avg_rating":4.31,"total_terjual":10844},{"brand":"iPhone","ecommerce":"Shopee","listings":46,"avg_price":84717511,"avg_rating":4.84,"total_terjual":30523},{"brand":"iPhone","ecommerce":"Tokopedia","listings":78,"avg_price":39287701,"avg_rating":4.84,"total_terjual":34089},{"brand":"vivo","ecommerce":"Lazada","listings":254,"avg_price":27162416,"avg_rating":4.26,"total_terjual":125274},{"brand":"vivo","ecommerce":"Shopee","listings":143,"avg_price":32788750,"avg_rating":4.84,"total_terjual":155527},{"brand":"vivo","ecommerce":"Tokopedia","listings":30,"avg_price":31708611,"avg_rating":4.9,"total_terjual":7983}];
+ 
+const ALL_BRANDS = [...new Set(RAW_SENTIMENT.map(d=>d.brand))].sort();
+const ALL_CHANNELS = [...new Set(RAW_SENTIMENT.map(d=>d.channel))].sort();
+const ALL_PLATFORMS = [...new Set(RAW_EC.map(d=>d.ecommerce))].sort();
+ 
+const BRAND_COLORS = {
+  'Samsung':'#4f8ef7','Xiaomi':'#f5a623','POCO':'#a78bfa','Infinix':'#22d09a',
+  'vivo':'#f76f6f','OPPO':'#22d0c8','Realme':'#f77bf7','Tecno':'#f7d96f',
+  'iPhone':'#e8edf5','ASUS':'#f4a261'
+};
+ 
+let activeBrands = new Set(ALL_BRANDS);
+let activeChannels = new Set(ALL_CHANNELS);
+let activePlatforms = new Set(ALL_PLATFORMS);
+let selectedBrand = null;
+let charts = {};
+ 
+// ─── FILTERS ─────────────────────────────────────────────
+function buildFilters(){
+  const bf = document.getElementById('brandFilters');
+  ALL_BRANDS.forEach(b=>{
+    const el = document.createElement('span');
+    el.className='filter-chip active';
+    el.dataset.val=b; el.dataset.type='brand';
+    el.innerHTML=`<span class="filter-dot" style="background:${BRAND_COLORS[b]||'#888'}"></span>${b}`;
+    el.onclick=()=>toggleFilter(el,'brand',b);
+    bf.appendChild(el);
+  });
+  const chf = document.getElementById('channelFilters');
+  const chLabels={'gadgetin':'Gadgetin','Jagat Review':'Jagat Review','Pixa Focus ID':'Pixa Focus','DKID Media':'DKID Media'};
+  ALL_CHANNELS.forEach(c=>{
+    const el = document.createElement('span');
+    el.className='filter-chip ch-active';
+    el.dataset.val=c;el.dataset.type='channel';
+    el.textContent=chLabels[c]||c;
+    el.onclick=()=>toggleFilter(el,'channel',c);
+    chf.appendChild(el);
+  });
+  const pf = document.getElementById('platformFilters');
+  ALL_PLATFORMS.forEach(p=>{
+    const el = document.createElement('span');
+    el.className='filter-chip ec-active';
+    el.dataset.val=p;el.dataset.type='platform';
+    el.textContent=p;
+    el.onclick=()=>toggleFilter(el,'platform',p);
+    pf.appendChild(el);
+  });
+}
+ 
+function toggleFilter(el, type, val){
+  if(type==='brand'){
+    if(activeBrands.has(val)){activeBrands.delete(val);el.classList.remove('active')}
+    else{activeBrands.add(val);el.classList.add('active')}
+  } else if(type==='channel'){
+    if(activeChannels.has(val)){activeChannels.delete(val);el.classList.remove('ch-active')}
+    else{activeChannels.add(val);el.classList.add('ch-active')}
+  } else {
+    if(activePlatforms.has(val)){activePlatforms.delete(val);el.classList.remove('ec-active')}
+    else{activePlatforms.add(val);el.classList.add('ec-active')}
+  }
+  refreshAll();
+}
+ 
+function resetFilters(){
+  activeBrands=new Set(ALL_BRANDS);
+  activeChannels=new Set(ALL_CHANNELS);
+  activePlatforms=new Set(ALL_PLATFORMS);
+  selectedBrand=null;
+  document.querySelectorAll('.filter-chip').forEach(el=>{
+    const t=el.dataset.type;
+    el.classList.toggle('active', t==='brand');
+    el.classList.toggle('ch-active', t==='channel');
+    el.classList.toggle('ec-active', t==='platform');
+  });
+  refreshAll();
+}
+ 
+// ─── DATA HELPERS ─────────────────────────────────────────
+function filteredSentiment(){
+  return RAW_SENTIMENT.filter(d=>activeBrands.has(d.brand)&&activeChannels.has(d.channel));
+}
+function filteredEC(){
+  return RAW_EC.filter(d=>activeBrands.has(d.brand)&&activePlatforms.has(d.ecommerce));
+}
+ 
+function brandSentAgg(data){
+  const m={};
+  data.forEach(d=>{
+    if(!m[d.brand])m[d.brand]={pos:0,neg:0,net:0,total:0};
+    if(d.sentiment==='positif')m[d.brand].pos+=d.count;
+    else if(d.sentiment==='negatif')m[d.brand].neg+=d.count;
+    else m[d.brand].net+=d.count;
+    m[d.brand].total+=d.count;
+  });
+  return m;
+}
+ 
+function brandECAgg(data){
+  const m={};
+  data.forEach(d=>{
+    if(!m[d.brand])m[d.brand]={listings:0,total_terjual:0,price_sum:0,rating_sum:0,cnt:0};
+    m[d.brand].listings+=d.listings;
+    m[d.brand].total_terjual+=d.total_terjual;
+    m[d.brand].price_sum+=d.avg_price*d.listings;
+    m[d.brand].rating_sum+=d.avg_rating*d.listings;
+    m[d.brand].cnt+=d.listings;
+  });
+  Object.keys(m).forEach(b=>{
+    m[b].avg_price = m[b].price_sum / m[b].cnt;
+    m[b].avg_rating = m[b].rating_sum / m[b].cnt;
+  });
+  return m;
+}
+ 
+function norm(val, arr){ const mn=Math.min(...arr),mx=Math.max(...arr); return mx===mn?0.5:(val-mn)/(mx-mn); }
+ 
+// ─── CHART HELPERS ────────────────────────────────────────
+function destroyChart(id){ if(charts[id]){charts[id].destroy();delete charts[id];} }
+function mkChart(id, type, data, options={}){
+  destroyChart(id);
+  const ctx=document.getElementById(id);
+  if(!ctx)return;
+  charts[id]=new Chart(ctx,{type,data,options:{
+    responsive:true,maintainAspectRatio:true,
+    plugins:{legend:{labels:{color:'#8892a4',font:{family:'DM Sans',size:11},boxWidth:10}},tooltip:{backgroundColor:'#181c24',borderColor:'#252c3a',borderWidth:1,titleColor:'#e8edf5',bodyColor:'#8892a4',titleFont:{family:'Syne',size:12},bodyFont:{family:'DM Sans',size:11},padding:10}},
+    scales:{x:{grid:{color:'#1e2330'},ticks:{color:'#4a5568',font:{family:'DM Sans',size:10}}},y:{grid:{color:'#1e2330'},ticks:{color:'#4a5568',font:{family:'DM Sans',size:10}}}},
+    ...options
+  }});
+}
+ 
+// ─── PAGES ────────────────────────────────────────────────
+function renderOverview(){
+  const sentData = filteredSentiment();
+  const ecData = filteredEC();
+  const sa = brandSentAgg(sentData);
+  const ea = brandECAgg(ecData);
+  const totalComments = sentData.reduce((s,d)=>s+d.count,0);
+  const totalListings = ecData.reduce((s,d)=>s+d.listings,0);
+  const totalTerjual = ecData.reduce((s,d)=>s+d.total_terjual,0);
+  const brands = Object.keys(sa);
+  const totalPos = brands.reduce((s,b)=>s+sa[b].pos,0);
+  const sentimentScore = brands.length? Math.round(totalPos/totalComments*100):0;
+ 
+  // Scorecards
+  const cards=[
+    {cls:'v-volume',v:'Volume',val:(totalComments+totalListings).toLocaleString(),lbl:'Total data (komentar + listing)'},
+    {cls:'v-velocity',v:'Velocity',val:'Berkala',lbl:'Data diperbarui per scraping'},
+    {cls:'v-variety',v:'Variety',val:'3 Jenis',lbl:'Teks, Numerik, Kategorikal'},
+    {cls:'v-veracity',v:'Veracity',val:'0',lbl:'Missing value tersisa'},
+    {cls:'v-variability',v:'Variability',val:'4',lbl:'Segmen harga berbeda'},
+    {cls:'v-validity',v:'Validity',val:'IndoBERT',lbl:'Model NLP terpilih'},
+    {cls:'v-value',v:'Value',val:'8 Insight',lbl:'Insight bisnis dihasilkan'},
+    {cls:'v-visualization',v:'Visualization',val:'4 Halaman',lbl:'Dashboard interaktif'},
+  ];
+  document.getElementById('scorecards').innerHTML=cards.map(c=>
+    `<div class="scard ${c.cls} fade-in"><div class="scard-v">${c.v}</div><div class="scard-val">${c.val}</div><div class="scard-lbl">${c.lbl}</div></div>`
+  ).join('');
+ 
+  // Platform donut
+  const pf={};
+  ecData.forEach(d=>{if(!pf[d.ecommerce])pf[d.ecommerce]=0;pf[d.ecommerce]+=d.listings;});
+  mkChart('chartPlatform','doughnut',{
+    labels:Object.keys(pf),
+    datasets:[{data:Object.values(pf),backgroundColor:['#4f8ef7','#f5a623','#22d09a'],borderColor:'#0a0c10',borderWidth:3}]
+  },{plugins:{legend:{position:'bottom',labels:{color:'#8892a4',font:{family:'DM Sans',size:11}}}}});
+ 
+  // Channel bar
+  const ch={};
+  sentData.forEach(d=>{if(!ch[d.channel])ch[d.channel]=0;ch[d.channel]+=d.count;});
+  mkChart('chartChannel','bar',{
+    labels:Object.keys(ch),
+    datasets:[{data:Object.values(ch),backgroundColor:['#a78bfa','#4f8ef7','#22d09a','#f5a623'],borderRadius:6,borderSkipped:false}]
+  },{scales:{x:{grid:{display:false}},y:{grid:{color:'#1e2330'}}},plugins:{legend:{display:false}}});
+ 
+  // Volume per brand
+  const sortedBrands = Object.entries(sa).sort((a,b)=>b[1].total-a[1].total).map(x=>x[0]);
+  mkChart('chartVolumeBrand','bar',{
+    labels:sortedBrands,
+    datasets:[
+      {label:'Komentar',data:sortedBrands.map(b=>sa[b]?.total||0),backgroundColor:sortedBrands.map(b=>BRAND_COLORS[b]||'#4f8ef7'),borderRadius:5,borderSkipped:false},
+    ]
+  },{
+    indexAxis:'x',
+    plugins:{legend:{display:false},annotation:{annotations:{line1:{type:'line',yMin:30,yMax:30,borderColor:'#f76f6f',borderWidth:1.5,borderDash:[4,4]}}}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'#1e2330'}}}
+  });
+ 
+  // Insights
+  const topBrand = sortedBrands[0]||'-';
+  const posRate = totalComments>0?Math.round(totalPos/totalComments*100):0;
+  const insightData = [
+    {cls:'ins-blue',num:totalComments.toLocaleString(),lbl:`Total komentar YouTube dari ${activeChannels.size} channel aktif`},
+    {cls:'ins-green',num:totalTerjual.toLocaleString(),lbl:`Total unit terjual dari ${totalListings.toLocaleString()} listing e-commerce`},
+    {cls:'ins-amber',num:posRate+'%',lbl:`Rate sentimen positif — ${topBrand} dengan komentar terbanyak`},
+    {cls:'ins-red',num:activeBrands.size,lbl:`Brand aktif dalam analisis saat ini`},
+  ];
+  document.getElementById('overviewInsights').innerHTML=insightData.map(i=>
+    `<div class="insight-card ${i.cls} fade-in"><div class="insight-num">${i.num}</div><div class="insight-lbl">${i.lbl}</div></div>`
+  ).join('');
+}
+ 
+function renderSentiment(){
+  const data = filteredSentiment();
+  const sa = brandSentAgg(data);
+  const brands = Object.keys(sa).filter(b=>sa[b].total>=5).sort((a,b)=>sa[b].total-sa[a].total);
+ 
+  // Stacked bar
+  mkChart('chartSentBrand','bar',{
+    labels:brands,
+    datasets:[
+      {label:'Positif',data:brands.map(b=>sa[b].pos),backgroundColor:'#22d09a',borderRadius:4,borderSkipped:false},
+      {label:'Netral',data:brands.map(b=>sa[b].net),backgroundColor:'#2e3749',borderRadius:0,borderSkipped:false},
+      {label:'Negatif',data:brands.map(b=>sa[b].neg),backgroundColor:'#f76f6f',borderRadius:0,borderSkipped:false},
+    ]
+  },{scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,grid:{color:'#1e2330'}}},plugins:{legend:{position:'bottom',labels:{color:'#8892a4',font:{family:'DM Sans',size:11}}}}});
+ 
+  // Overall donut
+  const totPos=data.filter(d=>d.sentiment==='positif').reduce((s,d)=>s+d.count,0);
+  const totNeg=data.filter(d=>d.sentiment==='negatif').reduce((s,d)=>s+d.count,0);
+  const totNet=data.filter(d=>d.sentiment==='netral').reduce((s,d)=>s+d.count,0);
+  mkChart('chartSentOverall','doughnut',{
+    labels:['Positif','Netral','Negatif'],
+    datasets:[{data:[totPos,totNet,totNeg],backgroundColor:['#22d09a','#2e3749','#f76f6f'],borderColor:'#0a0c10',borderWidth:3}]
+  },{plugins:{legend:{position:'bottom',labels:{color:'#8892a4',font:{family:'DM Sans',size:11}}}}});
+ 
+  // Per channel stacked (top 5 brands by volume)
+  const top5 = brands.slice(0,5);
+  const chData = {};
+  data.filter(d=>top5.includes(d.brand)).forEach(d=>{
+    const key=d.brand+' × '+d.channel;
+    if(!chData[key])chData[key]={pos:0,neg:0,net:0};
+    if(d.sentiment==='positif')chData[key].pos+=d.count;
+    else if(d.sentiment==='negatif')chData[key].neg+=d.count;
+    else chData[key].net+=d.count;
+  });
+ 
+  // by brand per channel grouped
+  const channelList=[...activeChannels];
+  mkChart('chartSentChannel','bar',{
+    labels:top5,
+    datasets:channelList.map((ch,i)=>{
+      const clrs=['#a78bfa','#4f8ef7','#22d09a','#f5a623'];
+      return {
+        label:ch,
+        data:top5.map(b=>{
+          const rows=data.filter(d=>d.brand===b&&d.channel===ch);
+          return rows.reduce((s,d)=>s+d.count,0);
+        }),
+        backgroundColor:clrs[i%4],
+        borderRadius:4,borderSkipped:false
+      };
+    })
+  },{scales:{x:{grid:{display:false}},y:{grid:{color:'#1e2330'}}},plugins:{legend:{position:'bottom',labels:{color:'#8892a4',font:{family:'DM Sans',size:11}}}}});
+ 
+  // Weighted sentiment table
+  const rows = brands.map(b=>{
+    const {pos,neg,net,total}=sa[b];
+    const rawScore = total>0?(pos-neg)/total:0;
+    const weighted = rawScore * Math.log(1+total);
+    return {b,pos,neg,net,total,rawScore,weighted};
+  }).sort((a,b)=>b.weighted-a.weighted);
+ 
+  const tbl = document.getElementById('weightedTable');
+  tbl.innerHTML=`<tr><th>#</th><th>Brand</th><th>Positif</th><th>Netral</th><th>Negatif</th><th>Total</th><th>Raw Score</th><th>Weighted Score</th></tr>`+
+    rows.map((r,i)=>`<tr>
+      <td style="color:var(--text3)">${i+1}</td>
+      <td><span style="font-weight:500;color:${BRAND_COLORS[r.b]||'#fff'}">${r.b}</span></td>
+      <td><span class="brand-badge sent-pos">${r.pos}</span></td>
+      <td><span class="brand-badge sent-net">${r.net}</span></td>
+      <td><span class="brand-badge sent-neg">${r.neg}</span></td>
+      <td style="font-weight:500">${r.total}</td>
+      <td style="color:${r.rawScore>0?'var(--green)':r.rawScore<0?'var(--red)':'var(--text2)'}">${r.rawScore.toFixed(3)}</td>
+      <td style="font-weight:600;color:${r.weighted>0?'var(--green)':r.weighted<0?'var(--red)':'var(--text2)'}">${r.weighted.toFixed(3)}</td>
+    </tr>`).join('');
+ 
+  // Brand detail
+  renderBrandDetail();
+}
+ 
+function renderBrandDetail(){
+  const sec = document.getElementById('brandDetailSection');
+  if(!selectedBrand){sec.innerHTML='';return;}
+  const b = selectedBrand;
+  const sa = brandSentAgg(filteredSentiment());
+  const ea = brandECAgg(filteredEC());
+  const bsa = sa[b]||{pos:0,neg:0,net:0,total:0};
+  const bea = ea[b]||{listings:0,total_terjual:0,avg_price:0,avg_rating:0};
+  const color = BRAND_COLORS[b]||'#4f8ef7';
+  const posRate = bsa.total>0?Math.round(bsa.pos/bsa.total*100):0;
+  sec.innerHTML=`<div class="brand-detail-header fade-in">
+    <div class="brand-avatar" style="background:${color}22;color:${color}">${b.charAt(0)}</div>
+    <div style="flex:1">
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:${color}">${b}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">Brand detail — data real dari dataset</div>
+      <div class="brand-stats-row">
+        <div class="bstat"><div class="bstat-val" style="color:${color}">${bsa.total}</div><div class="bstat-lbl">Total Komentar</div></div>
+        <div class="bstat"><div class="bstat-val" style="color:var(--green)">${posRate}%</div><div class="bstat-lbl">Sentimen Positif</div></div>
+        <div class="bstat"><div class="bstat-val">${(bea.total_terjual/1000).toFixed(1)}K</div><div class="bstat-lbl">Total Terjual</div></div>
+        <div class="bstat"><div class="bstat-val">${(bea.avg_price/1e6).toFixed(1)}jt</div><div class="bstat-lbl">Harga Rata-rata</div></div>
+        <div class="bstat"><div class="bstat-val" style="color:var(--amber)">${bea.avg_rating.toFixed(2)}</div><div class="bstat-lbl">Rating Rata-rata</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+ 
+function renderEcommerce(){
+  const data = filteredEC();
+  const ea = brandECAgg(data);
+  const brands = Object.keys(ea).sort((a,b)=>ea[b].total_terjual-ea[a].total_terjual);
+ 
+  mkChart('chartTerjual','bar',{
+    labels:brands,
+    datasets:[{label:'Total Terjual',data:brands.map(b=>ea[b].total_terjual),backgroundColor:brands.map(b=>BRAND_COLORS[b]||'#4f8ef7'),borderRadius:6,borderSkipped:false}]
+  },{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1e2330'}},y:{grid:{display:false}}}});
+ 
+  mkChart('chartHarga','bar',{
+    labels:brands,
+    datasets:[{label:'Harga (juta Rp)',data:brands.map(b=>+(ea[b].avg_price/1e6).toFixed(1)),backgroundColor:brands.map(b=>(BRAND_COLORS[b]||'#4f8ef7')+'99'),borderRadius:6,borderSkipped:false}]
+  },{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1e2330'}},y:{grid:{display:false}}}});
+ 
+  mkChart('chartRating','bar',{
+    labels:brands,
+    datasets:[{label:'Rating',data:brands.map(b=>+ea[b].avg_rating.toFixed(2)),backgroundColor:brands.map(b=>ea[b].avg_rating>=4.8?'#22d09a':ea[b].avg_rating>=4.5?'#f5a623':'#f76f6f'),borderRadius:6,borderSkipped:false}]
+  },{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:3.5,max:5.2,grid:{color:'#1e2330'}},y:{grid:{display:false}}}});
+ 
+  // Scatter harga vs terjual
+  mkChart('chartScatter','scatter',{
+    datasets:brands.map(b=>({
+      label:b,
+      data:[{x:+(ea[b].avg_price/1e6).toFixed(1),y:ea[b].total_terjual}],
+      backgroundColor:BRAND_COLORS[b]||'#4f8ef7',
+      pointRadius:10,
+      pointHoverRadius:13,
+    }))
+  },{plugins:{legend:{position:'bottom',labels:{color:'#8892a4',font:{family:'DM Sans',size:10},boxWidth:8}}},scales:{x:{title:{display:true,text:'Harga rata-rata (juta Rp)',color:'#4a5568'},grid:{color:'#1e2330'}},y:{title:{display:true,text:'Total terjual',color:'#4a5568'},grid:{color:'#1e2330'}}}});
+ 
+  // Table
+  const tbl = document.getElementById('ecTable');
+  const sorted = [...data].sort((a,b)=>b.total_terjual-a.total_terjual);
+  tbl.innerHTML=`<tr><th>Brand</th><th>Platform</th><th>Listings</th><th>Avg Harga</th><th>Avg Rating</th><th>Total Terjual</th></tr>`+
+    sorted.map(r=>`<tr>
+      <td style="font-weight:500;color:${BRAND_COLORS[r.brand]||'#fff'}">${r.brand}</td>
+      <td style="color:var(--text2)">${r.ecommerce}</td>
+      <td>${r.listings.toLocaleString()}</td>
+      <td>Rp ${(r.avg_price/1e6).toFixed(1)}jt</td>
+      <td style="color:${r.avg_rating>=4.8?'var(--green)':r.avg_rating>=4.5?'var(--amber)':'var(--red)'}">${r.avg_rating.toFixed(2)}</td>
+      <td style="font-weight:500">${r.total_terjual.toLocaleString()}</td>
+    </tr>`).join('');
+}
+ 
+function renderCorrelation(){
+  const sa = brandSentAgg(filteredSentiment());
+  const ea = brandECAgg(filteredEC());
+  const brands = [...new Set([...Object.keys(sa),...Object.keys(ea)])].filter(b=>sa[b]&&ea[b]&&sa[b].total>=5);
+ 
+  // Compute composite
+  const sentScores = brands.map(b=>{const {pos,neg,total}=sa[b];return total>0?(pos-neg)/total:0;});
+  const weightedScores = brands.map((b,i)=>sentScores[i]*Math.log(1+sa[b].total));
+  const terjuals = brands.map(b=>ea[b]?.total_terjual||0);
+  const ratings = brands.map(b=>ea[b]?.avg_rating||0);
+  const prices = brands.map(b=>ea[b]?.avg_price||0);
+  const priceValues = prices.map(p=>1-(p/Math.max(...prices)));
+ 
+  const composite = brands.map((b,i)=>{
+    return 0.4*norm(weightedScores[i],weightedScores) + 0.3*norm(terjuals[i],terjuals) + 0.2*norm(ratings[i],ratings) + 0.1*norm(priceValues[i],priceValues);
+  });
+  const ranked = brands.map((b,i)=>({b,score:composite[i],ws:weightedScores[i],tj:terjuals[i],rt:ratings[i]}))
+    .sort((a,b)=>b.score-a.score);
+ 
+  // Composite bar
+  mkChart('chartComposite','bar',{
+    labels:ranked.map(r=>r.b),
+    datasets:[{
+      label:'Composite Score',
+      data:ranked.map(r=>+r.score.toFixed(3)),
+      backgroundColor:ranked.map(r=>r.score>=0.6?'#22d09a':r.score>=0.4?'#4f8ef7':r.score>=0.25?'#f5a623':'#f76f6f'),
+      borderRadius:6,borderSkipped:false
+    }]
+  },{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{min:0,max:1,grid:{color:'#1e2330'}},y:{grid:{display:false}}}});
+ 
+  // Radar top 3
+  const top3 = ranked.slice(0,3).map(r=>r.b);
+  const radarLabels=['Sentimen','Penjualan','Rating','Value Harga','Volume Komen'];
+  mkChart('chartRadar','radar',{
+    labels:radarLabels,
+    datasets:top3.map(b=>{
+      const i=brands.indexOf(b);
+      return {
+        label:b,
+        data:[
+          +(norm(weightedScores[i],weightedScores)*100).toFixed(1),
+          +(norm(terjuals[i],terjuals)*100).toFixed(1),
+          +(norm(ratings[i],ratings)*100).toFixed(1),
+          +(norm(priceValues[i],priceValues)*100).toFixed(1),
+          +(norm(sa[b].total,brands.map(x=>sa[x]?.total||0))*100).toFixed(1),
+        ],
+        borderColor:BRAND_COLORS[b]||'#4f8ef7',
+        backgroundColor:(BRAND_COLORS[b]||'#4f8ef7')+'33',
+        borderWidth:2,pointRadius:4,
+      };
+    })
+  },{scales:{r:{grid:{color:'#1e2330'},ticks:{color:'#4a5568',backdropColor:'transparent',font:{size:9}},pointLabels:{color:'#8892a4',font:{size:10}},min:0,max:100}},plugins:{legend:{position:'bottom',labels:{color:'#8892a4',font:{family:'DM Sans',size:11}}}}});
+ 
+  // Bubble chart
+  mkChart('chartBubble','bubble',{
+    datasets:brands.map((b,i)=>({
+      label:b,
+      data:[{x:+(weightedScores[i]).toFixed(3),y:Math.round(terjuals[i]),r:Math.max(5,Math.sqrt(ea[b]?.listings||1)*2)}],
+      backgroundColor:(BRAND_COLORS[b]||'#4f8ef7')+'aa',
+      borderColor:BRAND_COLORS[b]||'#4f8ef7',
+    }))
+  },{plugins:{legend:{position:'bottom',labels:{color:'#8892a4',font:{family:'DM Sans',size:10},boxWidth:8}}},scales:{x:{title:{display:true,text:'Weighted Sentiment Score',color:'#4a5568'},grid:{color:'#1e2330'}},y:{title:{display:true,text:'Total Terjual',color:'#4a5568'},grid:{color:'#1e2330'}}}});
+ 
+  // Quadrant analysis
+  const medWS = weightedScores.slice().sort((a,b)=>a-b)[Math.floor(weightedScores.length/2)];
+  const medTJ = terjuals.slice().sort((a,b)=>a-b)[Math.floor(terjuals.length/2)];
+  const quads = {star:[],gem:[],over:[],need:[]};
+  brands.forEach((b,i)=>{
+    const ws=weightedScores[i], tj=terjuals[i];
+    if(ws>=medWS&&tj>=medTJ) quads.star.push(b);
+    else if(ws>=medWS&&tj<medTJ) quads.gem.push(b);
+    else if(ws<medWS&&tj>=medTJ) quads.over.push(b);
+    else quads.need.push(b);
+  });
+  const quadDefs=[
+    {key:'star',cls:'quad-star',icon:'⭐',title:'Star Brand',desc:'Sentimen tinggi & penjualan tinggi — strategi sudah optimal'},
+    {key:'gem',cls:'quad-gem',icon:'💎',title:'Hidden Gem',desc:'Sentimen positif tapi penjualan rendah — butuh boost marketing'},
+    {key:'over',cls:'quad-over',icon:'⚠️',title:'Sales-Driven',desc:'Penjualan tinggi tapi sentimen rendah — perlu perbaikan produk'},
+    {key:'need',cls:'quad-need',icon:'🔴',title:'Needs Work',desc:'Sentimen & penjualan rendah — evaluasi total diperlukan'},
+  ];
+  document.getElementById('quadrantWrap').innerHTML=quadDefs.map(q=>`
+    <div class="${q.cls} quad-card fade-in">
+      <div class="quad-title">${q.icon} ${q.title}</div>
+      <div class="quad-brands">${(quads[q.key]).map(b=>`<span class="quad-brand-pill">${b}</span>`).join('')||'<span style="color:var(--text3);font-size:11px">—</span>'}</div>
+      <div class="quad-desc">${q.desc}</div>
+    </div>
+  `).join('');
+}
+ 
+// ─── PAGE SWITCHING ────────────────────────────────────────
+function switchPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  event.target.classList.add('active');
+  renderPage(name);
+}
+ 
+function renderPage(name){
+  if(name==='overview') renderOverview();
+  else if(name==='sentiment') renderSentiment();
+  else if(name==='ecommerce') renderEcommerce();
+  else if(name==='correlation') renderCorrelation();
+}
+ 
+function refreshAll(){
+  const active = document.querySelector('.page.active');
+  if(!active) return;
+  const name = active.id.replace('page-','');
+  renderPage(name);
+  updateSelectedBrandInfo();
+}
+ 
+function updateSelectedBrandInfo(){
+  const info = document.getElementById('selectedBrandInfo');
+  if(!selectedBrand){ info.textContent='Pilih brand untuk detail'; return; }
+  const sa = brandSentAgg(filteredSentiment());
+  const ea = brandECAgg(filteredEC());
+  const bsa = sa[selectedBrand]||{pos:0,net:0,neg:0,total:0};
+  const bea = ea[selectedBrand]||{total_terjual:0,avg_rating:0};
+  info.innerHTML=`<span style="color:${BRAND_COLORS[selectedBrand]||'#fff'};font-weight:500">${selectedBrand}</span><br>
+    Komentar: ${bsa.total} | Positif: ${bsa.pos}<br>
+    Terjual: ${bea.total_terjual.toLocaleString()}<br>
+    Rating: ${bea.avg_rating.toFixed(2)}`;
+}
+ 
+// ─── BRAND CLICK SELECT ───────────────────────────────────
+document.addEventListener('click', e=>{
+  const chip = e.target.closest('[data-type="brand"]');
+  if(chip && e.ctrlKey){
+    selectedBrand = chip.dataset.val;
+    updateSelectedBrandInfo();
+    const active = document.querySelector('.page.active');
+    if(active?.id==='page-sentiment') renderBrandDetail();
+  }
+});
+ 
+// ─── GLOBAL SEARCH ────────────────────────────────────────
+const SEARCH_INDEX=[
+  ...ALL_BRANDS.map(b=>({type:'brand',label:b,action:()=>{selectedBrand=b;switchPageTo('sentiment');}})),
+  ...ALL_CHANNELS.map(c=>({type:'channel',label:c,action:()=>{switchPageTo('sentiment');}})),
+  {type:'page',label:'Overview & 8V Scorecard',action:()=>switchPageTo('overview')},
+  {type:'page',label:'Sentiment Analysis',action:()=>switchPageTo('sentiment')},
+  {type:'page',label:'E-Commerce EDA',action:()=>switchPageTo('ecommerce')},
+  {type:'page',label:'Korelasi & Gap Analysis',action:()=>switchPageTo('correlation')},
+  {type:'insight',label:'Gap Analysis 4 Kuadran',action:()=>switchPageTo('correlation')},
+  {type:'insight',label:'Composite Score Ranking',action:()=>switchPageTo('correlation')},
+  {type:'insight',label:'Weighted Sentiment Score',action:()=>switchPageTo('sentiment')},
+  {type:'insight',label:'Radar Chart Top 3 Brand',action:()=>switchPageTo('correlation')},
+  {type:'insight',label:'Scatter Harga vs Penjualan',action:()=>switchPageTo('ecommerce')},
+];
+ 
+function switchPageTo(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  const tabs=['overview','sentiment','ecommerce','correlation'];
+  document.querySelectorAll('.nav-tab')[tabs.indexOf(name)]?.classList.add('active');
+  renderPage(name);
+}
+ 
+const searchInput = document.getElementById('globalSearch');
+const searchResults = document.getElementById('searchResults');
+searchInput.addEventListener('input', ()=>{
+  const q = searchInput.value.toLowerCase().trim();
+  if(!q){searchResults.style.display='none';return;}
+  const hits = SEARCH_INDEX.filter(i=>i.label.toLowerCase().includes(q)).slice(0,8);
+  if(!hits.length){searchResults.style.display='none';return;}
+  searchResults.style.display='block';
+  searchResults.innerHTML = hits.map((h,i)=>`
+    <div class="search-result-item" data-idx="${i}">
+      <span>${h.label}</span>
+      <span class="sr-tag">${h.type}</span>
+    </div>`).join('');
+  searchResults.querySelectorAll('.search-result-item').forEach((el,i)=>{
+    el.onclick=()=>{hits[i].action();searchInput.value='';searchResults.style.display='none';};
+  });
+});
+document.addEventListener('click',e=>{if(!e.target.closest('.search-wrap'))searchResults.style.display='none';});
+searchInput.addEventListener('keydown',e=>{if(e.key==='Escape'){searchResults.style.display='none';searchInput.value=''}});
+ 
+// ─── INIT ─────────────────────────────────────────────────
+buildFilters();
+renderOverview();
+</script>
+</body>
+</html>
+ 
