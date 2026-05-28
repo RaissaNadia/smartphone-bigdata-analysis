@@ -24,7 +24,7 @@ Project ini menganalisis **7 dimensi Big Data (7V)** menggunakan dua sumber data
 |------|-------------|
 | Retno | Cleaning e-commerce, Korelasi & Gap Analysis, Laporan Value & Variability |
 | Zelga | Cleaning YouTube, RoBERTa Model, Laporan Volume |
-| Raissa | README, Laporan Variety & Veracity, EDA E-Commerce, Dashboard |
+| Raissa | README, Laporan Variety & Veracity, EDA E-Commerce, Dashboard Interaktif, Control dan backup |
 | Putri | EDA YouTube, Sentiment Analysis, Rule-Based Model, Laporan Validity |
 
 ---
