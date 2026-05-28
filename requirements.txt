@@ -1,0 +1,43 @@
+# ============================================================
+# requirements.txt
+# Multi-Platform Big Data Analysis: Smartphone Sales & Sentiment
+# ============================================================
+
+# --- Data Manipulation ---
+pandas==2.1.4
+numpy==1.26.4
+openpyxl==3.1.2
+
+# --- Machine Learning & NLP ---
+scikit-learn==1.4.0
+transformers==4.38.2
+torch==2.2.1
+tokenizers==0.15.2
+
+# --- NLP Bahasa Indonesia ---
+PySastrawi==1.2.0
+nlp-id==0.0.9
+nltk==3.8.1
+
+# --- Visualization ---
+matplotlib==3.8.3
+seaborn==0.13.2
+plotly==5.19.0
+wordcloud==1.9.3
+Pillow==10.2.0
+
+# --- Dashboard ---
+streamlit==1.32.2
+
+# --- Notebook ---
+jupyter==1.0.0
+ipykernel==6.29.3
+notebook==7.1.2
+
+# --- Utilities ---
+tqdm==4.66.2
+regex==2023.12.25
+html5lib==1.1
+requests==2.31.0
+python-dotenv==1.0.1
+zipfile36==0.1.3
