@@ -75,7 +75,7 @@ Evaluasi dilakukan terhadap **7.199 komentar YouTube** menggunakan label manual 
  
 ---
 
-### 1.3 Model Terpilih []
+### 1.3 Model Terpilih 
 
 Berdasarkan hasil evaluasi di atas, **RoBERTa** dipilih sebagai model utama karena:
  
