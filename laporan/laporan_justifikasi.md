@@ -20,15 +20,6 @@
 
 Evaluasi dilakukan terhadap **7.199 komentar YouTube** menggunakan label manual (`label_manual`) sebagai ground truth, yang dibandingkan dengan prediksi kedua model.
 
-### 1.1 Model yang Dibandingkan
- 
-| Model | Deskripsi |
-|---|---|
-| **Rule-Based** | Klasifikasi sentimen berdasarkan kamus kata (*lexicon-based*), tanpa proses training. Menggunakan daftar kata positif dan negatif untuk menghitung skor sentimen. |
-| **RoBERTa (IndoBERT)** | Model deep learning berbasis transformer (`w11wo/indonesian-roberta-base-sentiment-classifier`), pre-trained pada data besar berbahasa Indonesia dan fine-tuned untuk sentiment analysis. |
- 
----
- 
 ### 1.2 Hasil Evaluasi Model
  
 Evaluasi dilakukan terhadap **7.199 komentar YouTube** menggunakan label manual (`label_manual`) sebagai ground truth, yang dibandingkan dengan prediksi kedua model.
