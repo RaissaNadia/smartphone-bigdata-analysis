@@ -33,7 +33,7 @@ Evaluasi dilakukan terhadap **7.199 komentar YouTube** menggunakan label manual 
 | **Recall** | 69,93% | **87,37%** | +17,44% |
 | **F1-Score** | 64,86% | **86,56%** | +21,70% |
  
-> Evaluasi menggunakan **weighted average** karena distribusi label tidak seimbang — komentar Netral jauh lebih dominan dibanding Positif dan Negatif.
+> Evaluasi menggunakan **weighted average** karena distribusi label tidak seimbang, komentar Netral jauh lebih dominan dibanding Positif dan Negatif.
  
 #### 1.2.2 Confusion Matrix
  
@@ -79,9 +79,9 @@ Evaluasi dilakukan terhadap **7.199 komentar YouTube** menggunakan label manual 
 
 Berdasarkan hasil evaluasi di atas, **RoBERTa** dipilih sebagai model utama karena:
  
-1. **Unggul di seluruh metrik evaluasi** — RoBERTa melampaui Rule-Based di semua metrik, dengan selisih F1-Score terbesar mencapai **+21,70%**. F1-Score diprioritaskan karena distribusi kelas tidak seimbang, sehingga accuracy saja tidak cukup representatif.
-2. **Jauh lebih baik mendeteksi sentimen negatif** — Recall kelas Negatif Rule-Based hanya **11%**, artinya 89% komentar negatif salah diklasifikasi menjadi Netral. Sebaliknya RoBERTa mencapai recall Negatif **97%**, jauh lebih handal mendeteksi keluhan pengguna.
-3. **Mampu memahami konteks kalimat** — RoBERTa dilatih pada data besar berbahasa Indonesia sehingga mampu menangkap nuansa bahasa informal, slang, dan variasi penulisan yang umum di komentar YouTube. Rule-Based hanya mengandalkan daftar kata yang terbatas, sehingga gagal pada kalimat dengan konteks kompleks.
+1. **Unggul di seluruh metrik evaluasi**: RoBERTa melampaui Rule-Based di semua metrik, dengan selisih F1-Score terbesar mencapai **+21,70%**. F1-Score diprioritaskan karena distribusi kelas tidak seimbang, sehingga accuracy saja tidak cukup representatif.
+2. **Jauh lebih baik mendeteksi sentimen negatif**: Recall kelas Negatif Rule-Based hanya **11%**, artinya 89% komentar negatif salah diklasifikasi menjadi Netral. Sebaliknya RoBERTa mencapai recall Negatif **97%**, jauh lebih handal mendeteksi keluhan pengguna.
+3. **Mampu memahami konteks kalimat**: RoBERTa dilatih pada data besar berbahasa Indonesia sehingga mampu menangkap nuansa bahasa informal, slang, dan variasi penulisan yang umum di komentar YouTube. Rule-Based hanya mengandalkan daftar kata yang terbatas, sehingga gagal pada kalimat dengan konteks kompleks.
 
 ---
 
@@ -108,7 +108,7 @@ Berdasarkan hasil evaluasi di atas, **RoBERTa** dipilih sebagai model utama kare
 | `"harga ram worth it g ya"` | Positif | Negatif | Kalimat mengandung tanda tanya yang membuat model menginterpretasikan sebagai keraguan/negatif |
 | `"binggung tecno camo pro beli review"` | Netral | Negatif | Kata "bingung" dan nama brand mendorong prediksi ke Negatif |
  
-> Kelemahan RoBERTa terutama pada kelas Positif (recall 62%) — beberapa komentar positif yang bersifat permintaan atau membandingkan produk cenderung diprediksi sebagai Netral atau Negatif.
+> Kelemahan RoBERTa terutama pada kelas Positif (recall 62%), beberapa komentar positif yang bersifat permintaan atau membandingkan produk cenderung diprediksi sebagai Netral atau Negatif.
  
 ---
 
@@ -134,7 +134,7 @@ Jumlah komentar per brand HP yang tersisa (≥ 30 komentar):
 | iQOO | 89 |
 | Asus | 49 |
  
-Ketidakseimbangan volume antar brand sangat ekstrem — Xiaomi memiliki **976 komentar** sedangkan Asus hanya **49 komentar**. Jika menggunakan *raw average* saja, brand dengan komentar sedikit bisa mendapatkan skor yang terlalu ekstrem dan tidak merepresentasikan persepsi pasar secara akurat.
+Ketidakseimbangan volume antar brand sangat ekstrem, dimana Xiaomi memiliki **976 komentar** sedangkan Asus hanya **49 komentar**. Jika menggunakan *raw average* saja, brand dengan komentar sedikit bisa mendapatkan skor yang terlalu ekstrem dan tidak merepresentasikan persepsi pasar secara akurat.
  
 ---
 
@@ -179,7 +179,7 @@ weighted_sentiment(brand) = sentiment_score_avg(brand) × (jumlah_komentar(brand
  
 **Brand yang turun setelah weighting:**
  
-- **Vivo** turun dari rank **1 → 3**: Raw sentiment-nya tertinggi (0.1593), tetapi jumlah komentarnya hanya 182 — relatif kecil dibanding Xiaomi (976). Skor tinggi ini kurang terpercaya karena sampelnya lebih kecil.
+- **Vivo** turun dari rank **1 → 3**: Raw sentiment-nya tertinggi (0.1593), tetapi jumlah komentarnya hanya 182, relatif kecil dibanding Xiaomi (976). Skor tinggi ini kurang terpercaya karena sampelnya lebih kecil.
 - **Oppo** turun dari rank **7 → 9**: Volume komentar (213) tidak cukup mengimbangi skor negatifnya, sehingga weighted sentiment-nya lebih buruk.
 - **Tecno** turun dari rank **10 → 11**: Meski volumenya cukup besar (316), skor negatif yang dalam (-0.1266) menghasilkan weighted sentiment paling rendah dari semua brand.
 **Brand yang naik setelah weighting:**
@@ -193,9 +193,9 @@ weighted_sentiment(brand) = sentiment_score_avg(brand) × (jumlah_komentar(brand
  
 Pendekatan weighted sentiment dipilih karena:
  
-1. **Lebih representatif terhadap kondisi data nyata** — Tidak memberikan bobot yang sama pada brand dengan 49 komentar (Asus) versus brand dengan 976 komentar (Xiaomi). Semakin banyak komentar, semakin terpercaya skor sentimen-nya.
-2. **Mengurangi bias outlier** — Brand dengan sedikit komentar namun skor ekstrem tidak mendistorsi keseluruhan ranking. Contohnya Vivo yang memiliki raw sentiment tertinggi tetapi volumenya kecil, setelah weighting turun ke rank 3.
-3. **Sesuai untuk analisis Big Data dengan distribusi tidak seimbang** — Weighted average digunakan karena proporsi jumlah data pada setiap brand berbeda-beda. Pendekatan ini konsisten dengan penggunaan weighted average pada evaluasi model, di mana metrik dihitung dengan mempertimbangkan proporsi setiap kelas.
+1. **Lebih representatif terhadap kondisi data nyata**: Tidak memberikan bobot yang sama pada brand dengan 49 komentar (Asus) versus brand dengan 976 komentar (Xiaomi). Semakin banyak komentar, semakin terpercaya skor sentimen-nya.
+2. **Mengurangi bias outlier**: Brand dengan sedikit komentar namun skor ekstrem tidak mendistorsi keseluruhan ranking. Contohnya Vivo yang memiliki raw sentiment tertinggi tetapi volumenya kecil, setelah weighting turun ke rank 3.
+3. **Sesuai untuk analisis Big Data dengan distribusi tidak seimbang**: Weighted average digunakan karena proporsi jumlah data pada setiap brand berbeda-beda. Pendekatan ini konsisten dengan penggunaan weighted average pada evaluasi model, di mana metrik dihitung dengan mempertimbangkan proporsi setiap kelas.
 ---
  
 *Laporan ini merupakan bagian dari proyek akhir analisis sentimen smartphone. Untuk detail teknis, dapat dilihat pada notebook `Analisis_Sentimen_Rule_Based_&_RoBERTa.ipynb` dan `Sentiment_Analysis_weighted_sentiment_&_perbandingan_hasil_FIX.ipynb`.*
