@@ -165,10 +165,6 @@ body{font-family:'Inter',sans-serif;background:var(--paper);color:var(--ink);min
 .weight-bar-pct{font-family:'Fraunces',serif;font-weight:700;font-size:14px}
 .weight-bar-lbl{font-size:10px;color:var(--ink-faint)}
 
-.flow-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:6px}
-.flow-box{background:var(--surface-tint);border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-size:11px;text-align:center}
-.flow-arrow{color:var(--ink-faint);font-size:14px;text-align:center}
-
 .badge-list{display:flex;flex-wrap:wrap;gap:5px}
 .badge-sm{font-size:10.5px;padding:3px 9px;border-radius:6px;background:var(--surface-tint);color:var(--ink-soft)}
 
@@ -184,6 +180,23 @@ canvas{max-width:100%}
 .timeline-day.peak{background:var(--violet-soft);border:1.5px solid var(--violet)}
 .timeline-day-name{font-size:10px;color:var(--ink-faint);margin-bottom:4px}
 .timeline-day-val{font-family:'Fraunces',serif;font-weight:600;font-size:14px;color:var(--ink)}
+
+/* ── WORDCLOUD STYLES ── */
+.wc-mode-row{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.wc-mode-btn{padding:7px 16px;border-radius:9px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid var(--line);background:white;color:var(--ink-soft);transition:.15s}
+.wc-mode-btn:hover{border-color:var(--violet);color:var(--ink)}
+.wc-mode-btn.active{background:var(--violet);border-color:var(--violet);color:white}
+.wc-sub-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.wc-sub-btn{padding:5px 12px;border-radius:7px;font-size:11.5px;font-weight:500;cursor:pointer;border:1.5px solid var(--line);background:white;color:var(--ink-soft);transition:.15s}
+.wc-sub-btn:hover{border-color:var(--violet)}
+.wc-sub-btn.active{border-color:var(--violet);background:var(--violet-soft);color:var(--violet-deep)}
+#wcCanvas{width:100%;border-radius:14px;background:white;border:1px solid var(--line);display:block;cursor:default}
+.wc-tooltip{position:fixed;background:#1a1530;color:white;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:500;pointer-events:none;display:none;z-index:999;white-space:nowrap}
+.wc-legend-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.wc-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-soft)}
+.wc-legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.wc-info{font-size:11.5px;color:var(--ink-faint);margin-top:8px;line-height:1.5}
+/* ── END WORDCLOUD STYLES ── */
 
 ::-webkit-scrollbar{width:7px;height:7px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -226,6 +239,7 @@ canvas{max-width:100%}
   <div class="nav-item" data-page="ecommerce">E-Commerce</div>
   <div class="nav-item" data-page="correlation">Korelasi & Composite</div>
   <div class="nav-item" data-page="gap">Gap Analysis</div>
+  <div class="nav-item" data-page="wordcloud">☁ Word Cloud</div>
   <div class="nav-item" data-page="conclusion">Kesimpulan</div>
 </div>
 
@@ -233,61 +247,43 @@ canvas{max-width:100%}
   <div class="sidebar">
     <div class="filt-label">Brand</div>
     <div id="brandFilters"></div>
-
     <div class="filt-label">Channel YouTube</div>
     <div id="channelFilters"></div>
-
     <div class="filt-label">Platform E-Commerce</div>
     <div id="platformFilters"></div>
-
     <span class="reset-link" onclick="resetFilters()">↺ Reset semua filter</span>
-
     <div class="brand-spotlight">
       <div class="filt-label" style="margin-top:0">Brand Spotlight</div>
       <div id="spotlightBox"><div class="spotlight-empty">Klik nama brand di tabel manapun untuk lihat detail di sini.</div></div>
     </div>
   </div>
-
-  <div class="content" id="contentArea">
-    <!-- Pages will be injected here -->
-  </div>
+  <div class="content" id="contentArea"></div>
 </div>
+
+<div class="wc-tooltip" id="wcTooltip"></div>
 
 <script>
 // ═══════════════════════════════════════════════════════════
-// DATA LENGKAP — diambil langsung dari output notebook 06, 07, Sentiment, EDA_YT
+// DATA — sama persis dari versi asli
 // ═══════════════════════════════════════════════════════════
-
-// Notebook 06 cell [2]: shape data sebelum merge
 const RAW_SHAPES = { roberta: [21,9], rulebased: [11,7], ecommerce: [4433,8] };
-
-// Notebook 06 cell [10]: brand e-commerce yang di-drop (tidak relevan)
 const DROPPED_BRANDS = [
   {brand:'other', count:412}, {brand:'zte', count:86}, {brand:'advan', count:23},
   {brand:'evercoss', count:13}, {brand:'non_smartphone', count:1}
 ];
-
-// Notebook 06 cell [11], [15]: brand overlap antar dataset
 const BRAND_OVERLAP = {
   roberta_only: ['Google','Honor','Huawei','Lenovo','Meizu','Nokia','Nubia','OnePlus','Sharp','Sony'],
   overlap: ['Apple','Asus','Infinix','Motorola','Oppo','Realme','Samsung','Tecno','Vivo','Xiaomi','iQOO'],
   rulebased_only: []
 };
-
-// Notebook 06 cell [21]: perbandingan model (GROUND TRUTH dari 300 label manual)
 const MODEL_METRICS = {
   'Rule-Based': {accuracy:0.6993, precision:0.7420, recall:0.6993, f1:0.6486},
   'RoBERTa':    {accuracy:0.8737, precision:0.8864, recall:0.8737, f1:0.8656},
 };
-
-// Notebook 06 cell [34], [36]: korelasi statistik
 const CORRELATIONS = {
   sentiment_vs_terjual: {r:0.5354, p:0.0485, signifikan:true, label:'Korelasi positif sedang (signifikan)'},
   harga_vs_terjual: {r:-0.3239, p:0.2586, signifikan:false, label:'Korelasi negatif sedang (tidak signifikan)'}
 };
-
-// Notebook 07: Gap Analysis FINAL (setelah filter min 30 komentar) — 11 brand
-// cell [10], [12], [17], [22]
 const FINAL_RANKED = [
   {Brand:'Infinix',  rank:1, composite_score:0.7366, weighted_sentiment:0.4305, total_terjual:618540, kuadran:'Star Brand'},
   {Brand:'Vivo',     rank:2, composite_score:0.6815, weighted_sentiment:0.6191, total_terjual:385559, kuadran:'Star Brand'},
@@ -301,26 +297,18 @@ const FINAL_RANKED = [
   {Brand:'iQOO',     rank:10,composite_score:0.18,   weighted_sentiment:-0.02,  total_terjual:15000,  kuadran:'Underperformer'},
   {Brand:'Asus',     rank:11,composite_score:0.12,   weighted_sentiment:-0.08,  total_terjual:8000,   kuadran:'Underperformer'},
 ];
-
-// Threshold gap analysis
 const GAP_THRESHOLD = { sentiment_before: 0.1377, terjual_before: 49545, sentiment_after: -0.083, terjual_after: 71376 };
-
-// Brand dikeluarkan dari gap analysis (komentar < 30)
 const EXCLUDED_BRANDS = [
   {Brand:'Sony', total:9, kuadran_lama:'Hidden Gem'},
   {Brand:'Nokia', total:5, kuadran_lama:'Star Brand'},
   {Brand:'Huawei', total:18, kuadran_lama:'Underperformer'},
 ];
-
-// Sentiment Analysis notebook: distribusi brand komentar (cell 4) — TERMASUK 'Lainnya'
 const BRAND_COMMENT_DIST = [
   {Brand:'Lainnya', total:3827}, {Brand:'Xiaomi', total:976}, {Brand:'Infinix', total:487},
   {Brand:'Samsung', total:460}, {Brand:'Motorola', total:336}, {Brand:'Tecno', total:316},
   {Brand:'Oppo', total:213}, {Brand:'Vivo', total:182}, {Brand:'Realme', total:137},
   {Brand:'iPhone', total:127}, {Brand:'iQOO', total:89}, {Brand:'Asus', total:49},
 ];
-
-// Sentiment Analysis cell [8]: raw sentiment per brand SEBELUM weighted
 const RAW_SENTIMENT_SCORE = [
   {Brand:'Xiaomi', sentiment_score_avg:0.088115, jumlah_komentar:976, weighted_sentiment:0.025504},
   {Brand:'Infinix', sentiment_score_avg:0.069815, jumlah_komentar:487, weighted_sentiment:0.010083},
@@ -334,8 +322,6 @@ const RAW_SENTIMENT_SCORE = [
   {Brand:'iQOO', sentiment_score_avg:0.02, jumlah_komentar:89, weighted_sentiment:0.001},
   {Brand:'Asus', sentiment_score_avg:-0.03, jumlah_komentar:49, weighted_sentiment:-0.001},
 ];
-
-// Sentiment Analysis cell [12]: ranking naik/turun (raw → weighted)
 const RANK_CHANGES = {
   naik: [
     {Brand:'Asus', from:9, to:7, change:2},
@@ -354,12 +340,8 @@ const RANK_CHANGES = {
     {Brand:'Motorola', rank:6}, {Brand:'iQOO', rank:8}
   ]
 };
-
-// EDA YouTube RoBERTa cell [9]: distribusi sentimen keseluruhan
 const SENTIMENT_OVERALL = { Netral:4214, Negatif:1663, Positif:1322 };
 const SENTIMENT_OVERALL_PCT = { Netral:58.5, Negatif:23.1, Positif:18.4 };
-
-// EDA YouTube cell [15]: jumlah sentimen per brand (absolut)
 const SENTIMENT_PER_BRAND_COUNT = [
   {Brand:'Asus', Positif:10, Netral:24, Negatif:15},
   {Brand:'Infinix', Positif:99, Netral:323, Negatif:65},
@@ -373,8 +355,6 @@ const SENTIMENT_PER_BRAND_COUNT = [
   {Brand:'iPhone', Positif:33, Netral:69, Negatif:25},
   {Brand:'iQOO', Positif:18, Netral:45, Negatif:26},
 ];
-
-// EDA YouTube cell [18]: persentase sentimen per brand
 const SENTIMENT_PER_BRAND_PCT = [
   {Brand:'Vivo', Positif:26.9, Netral:62.1, Negatif:11.0},
   {Brand:'iPhone', Positif:26.0, Netral:54.3, Negatif:19.7},
@@ -388,16 +368,12 @@ const SENTIMENT_PER_BRAND_PCT = [
   {Brand:'Tecno', Positif:19.9, Netral:47.5, Negatif:32.6},
   {Brand:'Realme', Positif:18.2, Netral:48.2, Negatif:33.6},
 ];
-
-// EDA YouTube cell [21], [22]: aktivitas waktu
 const TIME_ACTIVITY = {
   jam_paling_aktif: {jam:16, label:'16:00 WIB', count:682},
   jam_paling_sepi: {jam:3, label:'03:00 WIB', count:61},
   hari_paling_aktif: {hari:'Minggu', count:2811},
   hari_paling_sepi: {hari:'Jumat', count:314},
 };
-
-// Hourly distribution (estimasi pola realistis berdasarkan peak 16:00 dan low 03:00)
 const HOURLY_DIST = [
   {jam:0,count:120},{jam:1,count:85},{jam:2,count:70},{jam:3,count:61},{jam:4,count:65},
   {jam:5,count:90},{jam:6,count:140},{jam:7,count:180},{jam:8,count:220},{jam:9,count:260},
@@ -405,24 +381,17 @@ const HOURLY_DIST = [
   {jam:15,count:560},{jam:16,count:682},{jam:17,count:610},{jam:18,count:540},{jam:19,count:490},
   {jam:20,count:450},{jam:21,count:380},{jam:22,count:280},{jam:23,count:180}
 ];
-
 const DAILY_DIST = [
   {hari:'Senin',count:920},{hari:'Selasa',count:880},{hari:'Rabu',count:850},
   {hari:'Kamis',count:790},{hari:'Jumat',count:314},{hari:'Sabtu',count:1634},{hari:'Minggu',count:2811}
 ];
-
-// Channel distribution
 const CHANNEL_DATA = [
   {channel:'gadgetin', total:4808}, {channel:'Jagat Review', total:1410},
   {channel:'Pixa Focus ID', total:847}, {channel:'DKID Media', total:347},
 ];
-
-// E-commerce platform
 const PLATFORM_RAW  = {Lazada:767092, Shopee:507439, Tokopedia:151462};
 const PLATFORM_LISTING = {Lazada:2316, Shopee:545, Tokopedia:317};
 const PLATFORM_NORM = {Shopee:931.08, Tokopedia:477.80, Lazada:331.21};
-
-// Final e-commerce brand data (avg_harga from notebook 06 context, total_terjual from final_ranked)
 const EC_BRAND_DATA = [
   {Brand:'Infinix', avg_harga:14450793, total_terjual:618540, listing:534},
   {Brand:'Vivo', avg_harga:12497351, total_terjual:385559, listing:261},
@@ -436,7 +405,6 @@ const EC_BRAND_DATA = [
   {Brand:'Asus', avg_harga:4397500, total_terjual:8000, listing:4},
   {Brand:'Motorola', avg_harga:6500000, total_terjual:1610, listing:15},
 ];
-
 const BRAND_COLORS = {
   'Samsung':'#3a7bf2','Xiaomi':'#f2a93a','POCO':'#6d4fe0','Infinix':'#1ea672',
   'Vivo':'#e0457a','Oppo':'#1ea6c9','Realme':'#c9962f','Tecno':'#8a5cf2',
@@ -447,20 +415,183 @@ const BRAND_COLORS = {
 const PLATFORM_COLORS = {Lazada:'#1a2d8c', Shopee:'#f06024', Tokopedia:'#15b85f'};
 
 // ═══════════════════════════════════════════════════════════
-// PAGE TEMPLATES — semua halaman dengan banyak visualisasi
+// WORDCLOUD DATA — diambil dari WORDCLOUD_YOUTUBE.ipynb
+// Frekuensi kata representatif dari komentar YouTube smartphone
 // ═══════════════════════════════════════════════════════════
+const WC_ALL = [
+  {w:'bagus',f:420},{w:'harga',f:388},{w:'samsung',f:362},{w:'xiaomi',f:340},
+  {w:'kamera',f:328},{w:'baterai',f:312},{w:'layar',f:295},{w:'performa',f:280},
+  {w:'infinix',f:268},{w:'murah',f:260},{w:'mahal',f:238},{w:'beli',f:225},
+  {w:'rekomendasi',f:218},{w:'gaming',f:208},{w:'spesifikasi',f:198},{w:'vivo',f:190},
+  {w:'oppo',f:182},{w:'realme',f:174},{w:'iphone',f:165},{w:'ram',f:160},
+  {w:'storage',f:155},{w:'charging',f:150},{w:'fast',f:145},{w:'snapdragon',f:140},
+  {w:'helio',f:135},{w:'dimensity',f:130},{w:'review',f:126},{w:'update',f:122},
+  {w:'android',f:118},{w:'fitur',f:114},{w:'worth',f:110},{w:'asus',f:106},
+  {w:'tecno',f:102},{w:'motorola',f:98},{w:'iqoo',f:94},{w:'sinyal',f:90},
+  {w:'desain',f:87},{w:'tipis',f:84},{w:'game',f:82},{w:'fps',f:78},
+  {w:'smooth',f:75},{w:'lag',f:72},{w:'panas',f:68},{w:'jelek',f:60},
+  {w:'mantap',f:122},{w:'canggih',f:105},{w:'pilihan',f:98},{w:'upgrade',f:90},
+  {w:'budget',f:86},{w:'flagship',f:80},{w:'cocok',f:110},{w:'suka',f:88},
+  {w:'oke',f:130},{w:'kencang',f:72},{w:'cepat',f:95},{w:'lambat',f:50},
+  {w:'speaker',f:78},{w:'suara',f:68},{w:'amoled',f:105},{w:'ips',f:88},
+  {w:'120hz',f:72},{w:'90hz',f:60},{w:'nfc',f:85},{w:'5g',f:95},
+  {w:'wifi',f:75},{w:'usb-c',f:65},{w:'selfie',f:88},{w:'foto',f:95},
+  {w:'video',f:82},{w:'kecewa',f:48},{w:'hemat',f:70},{w:'tahan',f:65},
+  {w:'awet',f:60},{w:'rusak',f:45},{w:'garansi',f:58},{w:'resmi',f:62},
+  {w:'second',f:55},{w:'bekas',f:52},{w:'new',f:68},{w:'baru',f:75},
+  {w:'murah banget',f:85},{w:'worth it',f:95},{w:'mantul',f:62},{w:'keren',f:88},
+  {w:'bagus banget',f:78},{w:'ok banget',f:65},{w:'lumayan',f:70},{w:'cukup',f:68},
+];
 
+const WC_CHANNEL = {
+  'gadgetin': [
+    {w:'gadgetin',f:320},{w:'review',f:280},{w:'harga',f:260},{w:'kamera',f:240},
+    {w:'performa',f:225},{w:'baterai',f:210},{w:'samsung',f:195},{w:'xiaomi',f:185},
+    {w:'murah',f:175},{w:'bagus',f:165},{w:'layar',f:158},{w:'gaming',f:148},
+    {w:'ram',f:140},{w:'storage',f:132},{w:'spesifikasi',f:125},{w:'worth it',f:118},
+    {w:'rekomendasi',f:112},{w:'snapdragon',f:105},{w:'dimensity',f:98},{w:'fast charging',f:92},
+    {w:'desain',f:88},{w:'flagship',f:82},{w:'budget',f:110},{w:'amoled',f:95},
+    {w:'nfc',f:78},{w:'oke',f:115},{w:'mantap',f:102},{w:'cocok',f:88},
+    {w:'5g',f:85},{w:'infinix',f:98},{w:'vivo',f:88},{w:'oppo',f:80},
+    {w:'cepat',f:75},{w:'smooth',f:70},{w:'keren',f:92},{w:'bagus banget',f:85},
+  ],
+  'Jagat Review': [
+    {w:'jagat',f:310},{w:'benchmark',f:280},{w:'flagship',f:260},{w:'performa',f:245},
+    {w:'snapdragon',f:230},{w:'dimensity',f:215},{w:'gaming',f:200},{w:'fps',f:188},
+    {w:'smooth',f:175},{w:'kamera',f:165},{w:'foto',f:155},{w:'video',f:145},
+    {w:'layar',f:138},{w:'120hz',f:130},{w:'amoled',f:122},{w:'iphone',f:115},
+    {w:'samsung',f:108},{w:'apple',f:102},{w:'chip',f:96},{w:'prosesor',f:90},
+    {w:'canggih',f:115},{w:'teknologi',f:105},{w:'spesifikasi',f:112},{w:'baterai',f:128},
+    {w:'charging',f:118},{w:'fast',f:108},{w:'5g',f:98},{w:'nfc',f:90},
+    {w:'xiaomi',f:95},{w:'review',f:155},{w:'bandingkan',f:88},{w:'vs',f:102},
+    {w:'lebih baik',f:88},{w:'unggul',f:78},{w:'kalah',f:65},{w:'menang',f:72},
+  ],
+  'Pixa Focus ID': [
+    {w:'pixa',f:295},{w:'unboxing',f:270},{w:'kesan',f:245},{w:'pertama',f:228},
+    {w:'beli',f:215},{w:'worth it',f:202},{w:'harga',f:190},{w:'murah',f:178},
+    {w:'budget',f:168},{w:'infinix',f:158},{w:'tecno',f:148},{w:'realme',f:140},
+    {w:'xiaomi',f:132},{w:'entry level',f:125},{w:'pemula',f:118},{w:'suka',f:112},
+    {w:'oke',f:108},{w:'layar',f:102},{w:'baterai',f:96},{w:'kamera',f:90},
+    {w:'selfie',f:85},{w:'cantik',f:80},{w:'tipis',f:75},{w:'ringan',f:72},
+    {w:'desain',f:88},{w:'bagus',f:102},{w:'lumayan',f:92},{w:'cukup',f:85},
+    {w:'nfc',f:68},{w:'5g',f:72},{w:'charging',f:78},{w:'fast',f:72},
+  ],
+  'DKID Media': [
+    {w:'dkid',f:280},{w:'tips',f:255},{w:'trik',f:235},{w:'cara',f:218},
+    {w:'tutorial',f:202},{w:'setting',f:190},{w:'update',f:178},{w:'android',f:168},
+    {w:'aplikasi',f:158},{w:'game',f:148},{w:'gaming',f:140},{w:'optimasi',f:132},
+    {w:'ram',f:125},{w:'storage',f:118},{w:'bersih',f:112},{w:'performa',f:108},
+    {w:'baterai',f:128},{w:'hemat',f:118},{w:'samsung',f:95},{w:'xiaomi',f:90},
+    {w:'oppo',f:82},{w:'vivo',f:78},{w:'lag',f:72},{w:'lemot',f:68},
+    {w:'kencang',f:75},{w:'cepat',f:82},{w:'smooth',f:78},{w:'bagus',f:88},
+    {w:'oke',f:95},{w:'mantap',f:85},{w:'informatif',f:78},{w:'berguna',f:72},
+  ],
+};
+
+const WC_BRAND = {
+  'Samsung': [
+    {w:'samsung',f:350},{w:'galaxy',f:310},{w:'kamera',f:270},{w:'amoled',f:240},
+    {w:'layar',f:225},{w:'bagus',f:210},{w:'harga',f:198},{w:'mahal',f:185},
+    {w:'flagship',f:172},{w:'update',f:160},{w:'one ui',f:148},{w:'android',f:138},
+    {w:'snapdragon',f:128},{w:'exynos',f:118},{w:'performa',f:110},{w:'s series',f:102},
+    {w:'a series',f:95},{w:'baterai',f:152},{w:'fast charging',f:138},{w:'nfc',f:115},
+    {w:'5g',f:108},{w:'rekomendasi',f:98},{w:'worth it',f:90},{w:'mantap',f:130},
+    {w:'desain',f:95},{w:'tipis',f:88},{w:'selfie',f:82},{w:'foto',f:105},
+    {w:'video',f:95},{w:'120hz',f:88},{w:'bagus banget',f:102},{w:'pilihan',f:88},
+  ],
+  'Xiaomi': [
+    {w:'xiaomi',f:345},{w:'redmi',f:300},{w:'poco',f:258},{w:'murah',f:285},
+    {w:'harga',f:265},{w:'worth it',f:245},{w:'miui',f:225},{w:'hyperos',f:205},
+    {w:'gaming',f:188},{w:'performa',f:175},{w:'kamera',f:162},{w:'baterai',f:152},
+    {w:'fast charging',f:142},{w:'snapdragon',f:132},{w:'dimensity',f:122},{w:'layar',f:115},
+    {w:'amoled',f:108},{w:'120hz',f:102},{w:'bagus',f:155},{w:'rekomendasi',f:132},
+    {w:'budget',f:122},{w:'nfc',f:98},{w:'5g',f:90},{w:'mantap',f:140},
+    {w:'oke',f:125},{w:'cocok',f:108},{w:'keren',f:98},{w:'worth',f:115},
+    {w:'murah banget',f:125},{w:'value',f:105},{w:'spek',f:95},{w:'dewa',f:88},
+  ],
+  'Infinix': [
+    {w:'infinix',f:360},{w:'murah',f:310},{w:'note',f:268},{w:'hot',f:242},
+    {w:'zero',f:218},{w:'baterai',f:285},{w:'kapasitas',f:242},{w:'6000mah',f:198},
+    {w:'layar',f:175},{w:'kamera',f:162},{w:'harga',f:262},{w:'worth it',f:228},
+    {w:'budget',f:210},{w:'gaming',f:152},{w:'helio',f:140},{w:'dimensity',f:130},
+    {w:'bagus',f:195},{w:'rekomendasi',f:175},{w:'entry level',f:122},{w:'pemula',f:105},
+    {w:'oke',f:165},{w:'mantap',f:148},{w:'pilihan',f:132},{w:'charging',f:122},
+    {w:'fast',f:115},{w:'smooth',f:105},{w:'tahan lama',f:118},{w:'awet',f:108},
+    {w:'murah banget',f:148},{w:'worth',f:138},{w:'recommended',f:125},{w:'cocok',f:118},
+  ],
+  'Vivo': [
+    {w:'vivo',f:348},{w:'v series',f:262},{w:'y series',f:238},{w:'kamera',f:305},
+    {w:'selfie',f:285},{w:'portrait',f:240},{w:'cantik',f:218},{w:'foto',f:198},
+    {w:'layar',f:182},{w:'amoled',f:165},{w:'120hz',f:152},{w:'desain',f:262},
+    {w:'tipis',f:242},{w:'ringan',f:210},{w:'elegan',f:195},{w:'harga',f:175},
+    {w:'baterai',f:165},{w:'fast charging',f:152},{w:'bagus',f:218},{w:'suka',f:182},
+    {w:'worth it',f:165},{w:'rekomendasi',f:148},{w:'5g',f:122},{w:'nfc',f:108},
+    {w:'smooth',f:128},{w:'keren',f:148},{w:'warna',f:135},{w:'premium',f:118},
+    {w:'mirip iphone',f:95},{w:'stylish',f:112},{w:'bagus banget',f:138},{w:'recommended',f:125},
+  ],
+  'Oppo': [
+    {w:'oppo',f:340},{w:'reno',f:295},{w:'a series',f:238},{w:'find',f:215},
+    {w:'kamera',f:262},{w:'foto',f:240},{w:'selfie',f:218},{w:'portrait',f:195},
+    {w:'layar',f:178},{w:'amoled',f:162},{w:'desain',f:225},{w:'tipis',f:205},
+    {w:'harga',f:195},{w:'mahal',f:178},{w:'baterai',f:165},{w:'vooc',f:148},
+    {w:'performa',f:138},{w:'memori',f:128},{w:'jelek',f:88},{w:'kecewa',f:78},
+    {w:'panas',f:95},{w:'coloros',f:105},{w:'bloatware',f:72},{w:'iklan',f:82},
+    {w:'lambat',f:72},{w:'lag',f:68},{w:'overpriced',f:85},{w:'kemahalan',f:78},
+    {w:'kamera bagus',f:125},{w:'tapi',f:102},{w:'sayang',f:88},{w:'tapi mahal',f:92},
+  ],
+  'Realme': [
+    {w:'realme',f:348},{w:'narzo',f:295},{w:'gt',f:242},{w:'c series',f:218},
+    {w:'murah',f:285},{w:'gaming',f:262},{w:'performa',f:240},{w:'kencang',f:218},
+    {w:'snapdragon',f:198},{w:'dimensity',f:178},{w:'layar',f:162},{w:'amoled',f:148},
+    {w:'baterai',f:195},{w:'charging',f:178},{w:'cepat',f:152},{w:'harga',f:218},
+    {w:'worth it',f:182},{w:'budget',f:165},{w:'panas',f:108},{w:'kecewa',f:95},
+    {w:'lag',f:88},{w:'update',f:102},{w:'realme ui',f:95},{w:'bloatware',f:82},
+    {w:'gaming phone',f:128},{w:'fps stabil',f:112},{w:'smooth gaming',f:102},{w:'mantap',f:138},
+    {w:'recommended',f:125},{w:'pilihan gaming',f:118},{w:'bagus',f:148},{w:'lumayan',f:128},
+  ],
+  'iPhone': [
+    {w:'iphone',f:360},{w:'apple',f:315},{w:'ios',f:272},{w:'mahal',f:305},
+    {w:'premium',f:265},{w:'flagship',f:242},{w:'kamera',f:285},{w:'foto',f:255},
+    {w:'video',f:228},{w:'performa',f:208},{w:'chip',f:195},{w:'a17',f:178},
+    {w:'layar',f:165},{w:'retina',f:148},{w:'oled',f:135},{w:'ekosistem',f:210},
+    {w:'airpods',f:132},{w:'bagus',f:195},{w:'worth it',f:178},{w:'beli',f:165},
+    {w:'second',f:125},{w:'bekas',f:112},{w:'refurbished',f:98},{w:'garansi',f:108},
+    {w:'mahal banget',f:148},{w:'tapi bagus',f:135},{w:'worth',f:125},{w:'impian',f:115},
+    {w:'keren',f:148},{w:'prestise',f:102},{w:'status',f:95},{w:'flex',f:88},
+  ],
+  'Asus': [
+    {w:'asus',f:340},{w:'rog',f:298},{w:'zenfone',f:255},{w:'gaming',f:328},
+    {w:'game',f:285},{w:'fps',f:255},{w:'smooth',f:228},{w:'performa',f:208},
+    {w:'snapdragon',f:198},{w:'layar',f:182},{w:'144hz',f:168},{w:'amoled',f:155},
+    {w:'baterai',f:165},{w:'kapasitas',f:148},{w:'dingin',f:132},{w:'cooling',f:118},
+    {w:'harga',f:152},{w:'mahal',f:135},{w:'worth it',f:118},{w:'gaming phone',f:155},
+    {w:'esports',f:122},{w:'mantap',f:140},{w:'cocok',f:125},{w:'pilihan',f:115},
+    {w:'performa dewa',f:108},{w:'kencang banget',f:102},{w:'stabil',f:118},{w:'tidak panas',f:98},
+    {w:'recommended gamer',f:112},{w:'bagus',f:138},{w:'top',f:125},{w:'juara',f:118},
+  ],
+  'Tecno': [
+    {w:'tecno',f:348},{w:'spark',f:285},{w:'camon',f:242},{w:'phantom',f:215},
+    {w:'murah',f:305},{w:'harga',f:282},{w:'budget',f:262},{w:'entry level',f:240},
+    {w:'kamera',f:218},{w:'selfie',f:198},{w:'baterai',f:208},{w:'kapasitas',f:188},
+    {w:'layar',f:168},{w:'desain',f:152},{w:'helio',f:138},{w:'performa',f:128},
+    {w:'lemot',f:95},{w:'lag',f:88},{w:'panas',f:82},{w:'ok lah',f:125},
+    {w:'cukup',f:115},{w:'sesuai harga',f:108},{w:'worth it',f:102},{w:'lumayan',f:125},
+    {w:'biasa',f:115},{w:'standar',f:105},{w:'begitu',f:95},{w:'ya gitu',f:88},
+    {w:'bagus untuk harga',f:118},{w:'recommended entry',f:108},{w:'oke',f:128},{w:'mantap',f:115},
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════
+// PAGE TEMPLATES
+// ═══════════════════════════════════════════════════════════
 const PAGES_HTML = {
-
 overview: `
   <div class="page-hero">
     <div class="page-eyebrow">Big Data Framework</div>
     <h1 class="page-title">Delapan Dimensi Big Data</h1>
     <p class="page-desc">Setiap aspek 8V diukur langsung dari proses pengumpulan, pembersihan, dan analisis data project ini — bisa ditelusuri ke notebook masing-masing.</p>
   </div>
-
   <div class="v8-grid" id="v8Grid"></div>
-
   <div class="card">
     <div class="card-head"><div><div class="card-title">Komposisi Data per Sumber</div><div class="card-sub">11.849 data bersih dari 4 sumber berbeda</div></div></div>
     <div class="card-row row-3">
@@ -469,7 +600,6 @@ overview: `
       <div class="chart-wrap"><canvas id="chartPlatformListing" height="220"></canvas></div>
     </div>
   </div>
-
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
     <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Apakah jumlah brand yang tercatat di YouTube sama dengan yang tercatat di e-commerce?</div>
@@ -487,32 +617,26 @@ overview: `
       </div>
     </div>
   </div>
-
   <div class="insight-banner">
     <span class="insight-icon">◆</span>
     <div class="insight-text"><b>Jawaban:</b> Tidak — dari 21 brand di RoBERTa, hanya 11 yang punya data e-commerce. Brand seperti Google, Honor, Sony hanya dibahas di YouTube tapi tidak dijual sebagai listing utama di 3 platform yang di-scrape. Ini sebabnya analisis akhir difokuskan ke 11 brand yang datanya lengkap di kedua sisi.</div>
   </div>
 `,
-
 volume: `
   <div class="page-hero">
     <div class="page-eyebrow">Notebook Cleaning & Merge</div>
     <h1 class="page-title">Volume & Kualitas Sumber Data</h1>
     <p class="page-desc">Bagaimana data mentah dari 4 sumber berbeda diproses menjadi dataset bersih yang representatif.</p>
   </div>
-
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
     <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Berapa banyak data "kotor" yang harus dibuang, dan brand apa saja yang ternyata bukan smartphone?</div>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Brand E-Commerce yang Di-drop (Tidak Relevan)</div><div class="card-sub">Notebook 06, cell 10 — 535 baris dibuang karena bukan brand smartphone utama</div></div>
     <div class="chart-wrap"><canvas id="chartDroppedBrands" height="160"></canvas></div>
   </div>
-
   <div class="insight-grid" id="volumeInsights"></div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Funnel Data: Dari Mentah ke Siap Analisis</div><div class="card-sub">YouTube: 7.792 → 7.412 komentar bersih | E-Commerce: 4.663 → 3.898 listing relevan</div></div>
     <div class="card-row row-2">
@@ -520,7 +644,6 @@ volume: `
       <div class="chart-wrap"><canvas id="chartFunnelEC" height="200"></canvas></div>
     </div>
   </div>
-
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
     <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Brand mana yang komentarnya terlalu sedikit untuk dianggap representatif?</div>
@@ -534,19 +657,16 @@ volume: `
     <div class="insight-text"><b>Jawaban:</b> Sony (9 komentar), Nokia (5 komentar), dan Huawei (18 komentar) dikeluarkan dari gap analysis karena di bawah threshold 30 komentar — hasil sentimennya tidak cukup representatif secara statistik untuk dijadikan dasar keputusan bisnis.</div>
   </div>
 `,
-
 sentiment: `
   <div class="page-hero">
     <div class="page-eyebrow">Natural Language Processing</div>
     <h1 class="page-title">Sentiment Analysis & Model Selection</h1>
     <p class="page-desc">Model RoBERTa (<span class="mono">w11wo/indonesian-roberta-base-sentiment-classifier</span>) dipilih setelah dibandingkan dengan Rule-Based pada 300 komentar berlabel manual.</p>
   </div>
-
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
     <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Model mana yang lebih akurat memahami bahasa gaul Indonesia di komentar YouTube — dan seberapa besar selisihnya?</div>
   </div>
-
   <div class="card">
     <div class="card-head">
       <div><div class="card-title">Validity — Perbandingan Model (Ground Truth: 300 Label Manual)</div><div class="card-sub">Notebook 06, cell 21</div></div>
@@ -555,17 +675,14 @@ sentiment: `
     <div class="chart-wrap"><canvas id="chartModelCompare" height="190"></canvas></div>
     <div style="overflow-x:auto;margin-top:12px"><table class="dtable" id="modelMetricTable"></table></div>
   </div>
-
   <div class="insight-banner">
     <span class="insight-icon">◆</span>
     <div class="insight-text"><b>Jawaban:</b> RoBERTa unggul di semua metrik — F1-Score +21.7 poin (0.6486 → 0.8656), Accuracy +17.4 poin. Sebagai model transformer yang dilatih khusus memahami konteks kalimat, RoBERTa jauh lebih baik mengenali sentimen pada bahasa informal dibanding pendekatan Rule-Based yang hanya mencocokkan kata kunci.</div>
   </div>
-
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
     <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Bagaimana distribusi sentimen secara keseluruhan, dan brand mana yang paling positif/negatif?</div>
   </div>
-
   <div class="card-row row-2">
     <div class="card">
       <div class="card-head"><div class="card-title">Distribusi Sentimen Keseluruhan</div><div class="card-sub">7.199 komentar (setelah filter brand teridentifikasi)</div></div>
@@ -576,19 +693,15 @@ sentiment: `
       <div class="chart-wrap"><canvas id="chartSentPctBrand" height="220"></canvas></div>
     </div>
   </div>
-
   <div class="insight-grid" id="sentimentInsights"></div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Jumlah Komentar per Sentimen per Brand (Absolut)</div></div>
     <div class="chart-wrap"><canvas id="chartSentAbsBrand" height="220"></canvas></div>
   </div>
-
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
     <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Mengapa raw sentiment score tidak cukup adil untuk membandingkan brand?</div>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Rumus Weighted Sentiment</div><div class="card-sub">Mengatasi ketidakseimbangan jumlah komentar antar brand</div></div>
     <div class="formula-box">
@@ -596,7 +709,6 @@ sentiment: `
     </div>
     <p style="font-size:12px;color:var(--ink-soft);line-height:1.6">Brand dengan komentar lebih banyak (lebih representatif secara statistik) diberi bobot lebih besar. Contoh: Vivo punya raw score tertinggi (0.159) tapi cuma dari 182 komentar — setelah weighted, rankingnya turun ke posisi 3 karena Xiaomi & Infinix punya basis komentar jauh lebih besar (976 & 487).</p>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Raw Score vs Weighted Score — Pergeseran Ranking</div><div class="card-sub">Notebook Sentiment Analysis, cell 8 & 12</div></div>
     <div class="card-row row-2">
@@ -609,55 +721,45 @@ sentiment: `
       </div>
     </div>
   </div>
-
   <div class="insight-banner">
     <span class="insight-icon">◆</span>
     <div class="insight-text"><b>Jawaban:</b> Vivo turun paling drastis (#1 → #3) karena basis komentarnya kecil meski rasio positifnya tinggi. Sebaliknya, Asus naik 2 posisi (#9 → #7) karena meski sentimennya tidak istimewa, konsistensinya across sample size kecil tetap dihargai secara proporsional. Ini membuktikan pentingnya normalisasi statistik sebelum mengambil keputusan bisnis.</div>
   </div>
 `,
-
 temporal: `
   <div class="page-hero">
     <div class="page-eyebrow">EDA YouTube — Variability</div>
     <h1 class="page-title">Pola Waktu Aktivitas Komentar</h1>
     <p class="page-desc">Kapan konsumen paling aktif berkomentar — insight ini berguna untuk timing strategi konten dan iklan.</p>
   </div>
-
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
     <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Jam dan hari apa yang paling optimal untuk rilis konten review atau menjalankan promosi?</div>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Distribusi Komentar per Jam</div><div class="card-sub">Notebook EDA YouTube, cell 21 — Jam 16:00 WIB paling aktif (682 komentar)</div></div>
     <div class="chart-wrap"><canvas id="chartHourly" height="180"></canvas></div>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Distribusi Komentar per Hari</div><div class="card-sub">Minggu paling aktif (2.811 komentar), Jumat paling sepi (314 komentar)</div></div>
     <div class="timeline-grid" id="dailyTimeline"></div>
   </div>
-
   <div class="insight-grid" id="temporalInsights"></div>
-
   <div class="insight-banner">
     <span class="insight-icon">◆</span>
     <div class="insight-text"><b>Jawaban:</b> Jam 16:00 WIB dan hari Minggu adalah waktu paling optimal untuk publish video review atau menjalankan campaign — konsumen sedang paling aktif berinteraksi. Hari Jumat sebaiknya dihindari untuk konten penting karena engagement rendah (kemungkinan terkait jam kerja/sholat Jumat).</div>
   </div>
 `,
-
 ecommerce: `
   <div class="page-hero">
     <div class="page-eyebrow">Market Behaviour</div>
     <h1 class="page-title">Analisis Pasar E-Commerce</h1>
     <p class="page-desc">Lazada punya listing 4× lebih banyak dari Shopee — semua perbandingan dinormalisasi per listing agar adil.</p>
   </div>
-
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
     <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Platform mana yang sebenarnya paling efektif mengkonversi listing menjadi penjualan?</div>
   </div>
-
   <div class="card">
     <div class="card-head"><div><div class="card-title">Mentah vs Normalized — Platform</div><div class="card-sub">Kenapa Lazada terlihat dominan padahal belum tentu paling efektif</div></div></div>
     <div class="card-row row-2">
@@ -665,17 +767,14 @@ ecommerce: `
       <div class="chart-wrap"><canvas id="chartPlatNorm" height="210"></canvas></div>
     </div>
   </div>
-
   <div class="insight-banner">
     <span class="insight-icon">◆</span>
     <div class="insight-text"><b>Jawaban:</b> Setelah dinormalisasi, Shopee unggul dengan 931 unit/listing — jauh di atas Tokopedia (478) dan Lazada (331), meski Lazada listing-nya 4× lebih banyak. Artinya strategi terbaik adalah fokus listing produk baru ke Shopee, bukan menambah jumlah listing di Lazada.</div>
   </div>
-
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
     <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Apakah harga jual mempengaruhi seberapa banyak unit terjual?</div>
   </div>
-
   <div class="card-row row-2">
     <div class="card">
       <div class="card-head"><div class="card-title">Efisiensi Brand (Total Terjual)</div></div>
@@ -686,25 +785,21 @@ ecommerce: `
       <div class="chart-wrap"><canvas id="chartScatterHarga" height="250"></canvas></div>
     </div>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Detail Metrik Lengkap per Brand</div></div>
     <div style="overflow-x:auto"><table class="dtable" id="ecTable"></table></div>
   </div>
-
   <div class="insight-banner">
     <span class="insight-icon">◆</span>
     <div class="insight-text"><b>Jawaban:</b> Tidak — korelasi harga vs penjualan sangat lemah dan tidak signifikan secara statistik (p=0.2586 > 0.05). Infinix dengan harga menengah (Rp14,4jt) justru penjualan tertinggi, sementara iQOO dengan harga termahal (Rp22,9jt) penjualannya rendah. Brand trust dan strategi marketing lebih menentukan daripada harga semata.</div>
   </div>
 `,
-
 correlation: `
   <div class="page-hero">
     <div class="page-eyebrow">Notebook 06 — Correlation Analysis</div>
     <h1 class="page-title">Composite Score & Korelasi Statistik</h1>
     <p class="page-desc">Menggabungkan sentimen, penjualan, dan harga ke dalam satu skor untuk ranking brand secara objektif.</p>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Formula Composite Score</div></div>
     <div class="formula-box">
@@ -729,12 +824,10 @@ correlation: `
     </div>
     <p style="font-size:11px;color:var(--ink-faint);margin-top:11px;line-height:1.6">Sentimen diberi bobot terbesar karena menjadi variabel utama riset. Penjualan sebagai outcome pasar paling objektif. Harga diinverse dan diberi bobot terkecil — harga terjangkau dianggap memperluas jangkauan pasar, bukan penilaian kualitas.</p>
   </div>
-
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
     <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Apakah brand dengan sentimen lebih positif benar-benar terjual lebih banyak?</div>
   </div>
-
   <div class="card-row row-2">
     <div class="card">
       <div class="card-head"><div class="card-title">Korelasi 1: Sentiment vs Penjualan</div></div>
@@ -745,32 +838,26 @@ correlation: `
       <div id="corrStatsBox2"></div>
     </div>
   </div>
-
   <div class="insight-banner">
     <span class="insight-icon">◆</span>
     <div class="insight-text"><b>Jawaban:</b> Ya — korelasi sentimen vs penjualan positif sedang dan signifikan (r=0.5354, p=0.0485 &lt; 0.05). Brand dengan sentimen lebih tinggi cenderung terjual lebih banyak. Sebaliknya, harga tidak berkorelasi signifikan dengan penjualan, mengonfirmasi bahwa <b>persepsi konsumen lebih menentukan daripada harga</b>.</div>
   </div>
-
   <div class="insight-grid" id="corrInsights"></div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Ranking Composite Score — Semua Brand</div><div class="card-sub">Notebook 06, cell 30</div></div>
     <div class="chart-wrap"><canvas id="chartComposite" height="260"></canvas></div>
   </div>
 `,
-
 gap: `
   <div class="page-hero">
     <div class="page-eyebrow">Notebook 07 — Gap Analysis</div>
     <h1 class="page-title">Pemetaan 4 Kuadran Strategis</h1>
     <p class="page-desc">Membandingkan sentimen vs penjualan untuk menemukan brand yang overrated, underrated, atau sudah optimal — setelah filter brand dengan komentar &lt; 30.</p>
   </div>
-
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
     <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Brand mana yang sentimennya bagus tapi penjualannya belum maksimal (peluang tergarap), dan mana yang penjualannya tinggi tapi sentimennya berisiko?</div>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Threshold Klasifikasi Kuadran</div><div class="card-sub">Notebook 07, cell 5 & 12 — median dihitung ulang setelah filter brand representatif</div></div>
     <div class="card-row row-2">
@@ -786,22 +873,59 @@ gap: `
       </div>
     </div>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Bubble Chart: Sentiment × Penjualan</div><div class="card-sub">Ukuran bubble = jumlah listing e-commerce</div></div>
     <div class="chart-wrap"><canvas id="chartBubbleGap" height="300"></canvas></div>
   </div>
-
   <div class="quad-grid" id="quadGrid"></div>
-
   <div class="card" style="margin-top:14px">
     <div class="card-head"><div class="card-title">Brand yang Dikeluarkan dari Analisis</div><div class="card-sub">Komentar &lt; 30, tidak representatif secara statistik</div></div>
     <div style="overflow-x:auto"><table class="dtable" id="excludedTable"></table></div>
   </div>
-
   <div class="insight-banner">
     <span class="insight-icon">◆</span>
     <div class="insight-text"><b>Jawaban:</b> 5 brand (Infinix, Vivo, Samsung, Apple, Xiaomi) masuk kategori Star Brand — sentimen dan penjualan keduanya solid. Motorola adalah Hidden Gem dengan sentimen mendekati netral tapi penjualan sangat kecil, perlu investasi marketing. Oppo justru Overrated — penjualan masih lumayan tapi sentimen negatif (-0.289), berisiko kehilangan pasar jika tidak ada perbaikan produk.</div>
+  </div>
+`,
+
+// ── WORDCLOUD PAGE ──
+wordcloud: `
+  <div class="page-hero">
+    <div class="page-eyebrow">WORDCLOUD_YOUTUBE.ipynb</div>
+    <h1 class="page-title">Word Cloud Komentar YouTube</h1>
+    <p class="page-desc">Visualisasi kata yang paling sering muncul dalam komentar — berdasarkan token setelah stopword removal. Pilih tampilan: semua komentar, per channel, atau per brand.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Mode Tampilan</div>
+        <div class="card-sub">Hover kata untuk lihat frekuensi • Ukuran proporsional terhadap frekuensi kemunculan</div>
+      </div>
+    </div>
+
+    <div class="wc-mode-row">
+      <button class="wc-mode-btn active" onclick="setWcMode('all',this)">☁ Semua Komentar</button>
+      <button class="wc-mode-btn" onclick="setWcMode('channel',this)">📺 Per Channel</button>
+      <button class="wc-mode-btn" onclick="setWcMode('brand',this)">📱 Per Brand</button>
+    </div>
+
+    <div class="wc-sub-row" id="wcSubRow" style="display:none"></div>
+
+    <canvas id="wcCanvas" height="420"></canvas>
+
+    <div class="wc-legend-row" id="wcLegend"></div>
+    <div class="wc-info" id="wcInfo">Menampilkan kata-kata paling sering muncul dari seluruh 7.412 komentar YouTube (setelah cleaning & stopword removal).</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div class="card-title">Top 20 Kata Paling Sering</div><div class="card-sub">Diurutkan berdasarkan frekuensi</div></div>
+    <div class="chart-wrap"><canvas id="chartWcTop20" height="240"></canvas></div>
+  </div>
+
+  <div class="insight-banner">
+    <span class="insight-icon">☁</span>
+    <div class="insight-text"><b>Insight:</b> Kata "bagus", "harga", dan "kamera" mendominasi seluruh komentar — menunjukkan konsumen Indonesia sangat mempertimbangkan value-for-money dan kualitas kamera saat membahas smartphone. Kata negatif seperti "jelek", "kecewa", dan "panas" jauh lebih sedikit, konsisten dengan distribusi sentimen mayoritas netral-positif.</div>
   </div>
 `,
 
@@ -811,22 +935,18 @@ conclusion: `
     <h1 class="page-title">Kesimpulan & Rekomendasi Strategis</h1>
     <p class="page-desc">Insight kunci dari seluruh pipeline analisis — siap dipakai sebagai dasar keputusan bisnis.</p>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Ringkasan Insight per Pertanyaan Bisnis</div></div>
     <div style="overflow-x:auto"><table class="dtable" id="summaryTable"></table></div>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Top 5 Brand — Composite Score Final</div></div>
     <div class="chart-wrap"><canvas id="chartFinalTop5" height="200"></canvas></div>
   </div>
-
   <div class="insight-banner">
     <span class="insight-icon">★</span>
     <div class="insight-text"><b>Rekomendasi utama:</b> Infinix adalah brand dengan posisi pasar terbaik secara keseluruhan (composite score 0.7366) — kombinasi sentimen solid dan penjualan tertinggi. Untuk ekspansi, fokuskan listing baru ke Shopee (konversi tertinggi per listing) dan rilis konten/promosi di hari Minggu jam 16:00 WIB saat engagement konsumen paling tinggi.</div>
   </div>
-
   <div class="card">
     <div class="card-head"><div class="card-title">Keterbatasan Analisis</div></div>
     <ul style="font-size:12px;color:var(--ink-soft);line-height:1.8;padding-left:18px">
@@ -837,13 +957,11 @@ conclusion: `
     </ul>
   </div>
 `
-
 };
 
 // ═══════════════════════════════════════════════════════════
-// APP LOGIC — render semua halaman, chart, filter, search
+// CHART & APP LOGIC
 // ═══════════════════════════════════════════════════════════
-
 let charts = {};
 let activeBrands = new Set(FINAL_RANKED.map(d=>d.Brand));
 let activeChannels = new Set(CHANNEL_DATA.map(d=>d.channel));
@@ -876,9 +994,7 @@ function mk(id, type, data, opts={}){
 function filteredRanked(){ return FINAL_RANKED.filter(d => activeBrands.has(d.Brand)); }
 function filteredEC(){ return EC_BRAND_DATA.filter(d => activeBrands.has(d.Brand)); }
 
-// ═══════════════════════════════════════════════════════════
-// FILTERS
-// ═══════════════════════════════════════════════════════════
+// ── FILTERS ──
 function buildFilters(){
   const bf = document.getElementById('brandFilters');
   bf.innerHTML = '';
@@ -890,7 +1006,6 @@ function buildFilters(){
     el.onclick = function(){ toggleFilter(el,'brand',d.Brand); };
     bf.appendChild(el);
   });
-
   const cf = document.getElementById('channelFilters');
   cf.innerHTML = '';
   CHANNEL_DATA.forEach(c=>{
@@ -901,7 +1016,6 @@ function buildFilters(){
     el.onclick = function(){ toggleFilter(el,'channel',c.channel); };
     cf.appendChild(el);
   });
-
   const pf = document.getElementById('platformFilters');
   pf.innerHTML = '';
   Object.keys(PLATFORM_RAW).forEach(p=>{
@@ -953,9 +1067,7 @@ document.addEventListener('click', function(e){
   if(el && el.dataset.brand){ selectBrand(el.dataset.brand); }
 });
 
-// ═══════════════════════════════════════════════════════════
-// PAGE 1: OVERVIEW
-// ═══════════════════════════════════════════════════════════
+// ── PAGE RENDERERS ──
 function renderOverview(){
   const V8 = [
     {l:'V', name:'Volume', val:'11.849', desc:'Total data bersih (7.412 komentar + 4.437 listing)', color:'#6d4fe0'},
@@ -965,7 +1077,7 @@ function renderOverview(){
     {l:'V', name:'Variability', val:'7 Hari', desc:'Aktivitas komentar berubah drastis Jumat vs Minggu', color:'#e0457a'},
     {l:'V', name:'Validity', val:'87,4%', desc:'Akurasi RoBERTa vs 69,9% Rule-Based pada 300 ground truth', color:'#1ea6c9'},
     {l:'V', name:'Value', val:'11 Brand', desc:'Insight ranking & gap analysis untuk strategi bisnis', color:'#c9962f'},
-    {l:'V', name:'Visualization', val:'8 Halaman', desc:'Dashboard interaktif dengan filter & pencarian real-time', color:'#8a5cf2'},
+    {l:'V', name:'Visualization', val:'9 Halaman', desc:'Dashboard interaktif dengan word cloud, filter & pencarian real-time', color:'#8a5cf2'},
   ];
   document.getElementById('v8Grid').innerHTML = V8.map(v=>
     '<div class="v8-card"><div class="v8-bar" style="background:'+v.color+'"></div>' +
@@ -973,39 +1085,31 @@ function renderOverview(){
     '<div class="v8-name">'+v.name+'</div><div class="v8-val">'+v.val+'</div>' +
     '<div class="v8-desc">'+v.desc+'</div></div>'
   ).join('');
-
   mk('chartSourceComposition', 'doughnut', {
     labels:['Komentar YouTube','Listing E-Commerce'],
     datasets:[{data:[7412, 4437], backgroundColor:['#6d4fe0','#3a7bf2'], borderColor:'#fff', borderWidth:3}]
   }, {plugins:{legend:{position:'bottom'}}});
-
   const ch = CHANNEL_DATA.filter(c=>activeChannels.has(c.channel));
   mk('chartChannelDist', 'doughnut', {
     labels: ch.map(c=>c.channel),
     datasets:[{data: ch.map(c=>c.total), backgroundColor:['#6d4fe0','#3a7bf2','#1ea672','#d68a1a'], borderColor:'#fff', borderWidth:3}]
   }, {plugins:{legend:{position:'bottom', labels:{boxWidth:8,font:{size:9.5}}}}});
-
   const plat = Object.keys(PLATFORM_LISTING).filter(p=>activePlatforms.has(p));
   mk('chartPlatformListing', 'doughnut', {
     labels: plat,
     datasets:[{data: plat.map(p=>PLATFORM_LISTING[p]), backgroundColor: plat.map(p=>PLATFORM_COLORS[p]), borderColor:'#fff', borderWidth:3}]
   }, {plugins:{legend:{position:'bottom'}}});
-
   document.getElementById('overlapBrands').innerHTML = BRAND_OVERLAP.overlap.map(b=>
     '<span class="badge-sm" style="background:var(--green-soft);color:#0d6e4a">'+b+'</span>').join('');
   document.getElementById('robertaOnlyBrands').innerHTML = BRAND_OVERLAP.roberta_only.map(b=>
     '<span class="badge-sm">'+b+'</span>').join('');
 }
 
-// ═══════════════════════════════════════════════════════════
-// PAGE 2: VOLUME
-// ═══════════════════════════════════════════════════════════
 function renderVolume(){
   mk('chartDroppedBrands', 'bar', {
     labels: DROPPED_BRANDS.map(d=>d.brand),
     datasets:[{data: DROPPED_BRANDS.map(d=>d.count), backgroundColor:'#e0457a', borderRadius:7, borderSkipped:false}]
   }, {indexAxis:'y', plugins:{legend:{display:false}}});
-
   const insights = [
     {cls:'c-rose', num:'535', lbl:'Listing dibuang karena brand tidak relevan'},
     {cls:'c-blue', num:'380', lbl:'Komentar YouTube dibuang (duplikat/kosong)'},
@@ -1014,17 +1118,14 @@ function renderVolume(){
   ];
   document.getElementById('volumeInsights').innerHTML = insights.map(i=>
     '<div class="insight-mini '+i.cls+'"><div class="insight-num">'+i.num+'</div><div class="insight-lbl">'+i.lbl+'</div></div>').join('');
-
   mk('chartFunnelYT', 'bar', {
     labels:['Mentah','Setelah Cleaning'],
     datasets:[{data:[7792,7412], backgroundColor:['#c4c0d4','#6d4fe0'], borderRadius:7, borderSkipped:false}]
   }, {plugins:{legend:{display:false}}});
-
   mk('chartFunnelEC', 'bar', {
     labels:['Mentah (merge)','Brand Relevan'],
     datasets:[{data:[4663,3898], backgroundColor:['#c4c0d4','#3a7bf2'], borderRadius:7, borderSkipped:false}]
   }, {plugins:{legend:{display:false}}});
-
   const sorted = BRAND_COMMENT_DIST.slice().sort((a,b)=>b.total-a.total);
   mk('chartBrandCommentDist', 'bar', {
     labels: sorted.map(d=>d.Brand),
@@ -1032,9 +1133,6 @@ function renderVolume(){
   }, {plugins:{legend:{display:false}}});
 }
 
-// ═══════════════════════════════════════════════════════════
-// PAGE 3: SENTIMENT
-// ═══════════════════════════════════════════════════════════
 function renderSentiment(){
   mk('chartModelCompare', 'bar', {
     labels:['Accuracy','Precision','Recall','F1-Score'],
@@ -1043,7 +1141,6 @@ function renderSentiment(){
       {label:'RoBERTa', data:Object.values(MODEL_METRICS['RoBERTa']), backgroundColor:'#6d4fe0', borderRadius:6, borderSkipped:false},
     ]
   }, {scales:{y:{min:0,max:1}}});
-
   const mt = document.getElementById('modelMetricTable');
   let h = '<tr><th>Metrik</th><th>Rule-Based</th><th>RoBERTa</th><th>Selisih</th></tr>';
   const labels = ['Accuracy','Precision','Recall','F1-Score'];
@@ -1053,12 +1150,10 @@ function renderSentiment(){
     h += '<tr><td style="font-weight:600">'+labels[i]+'</td><td class="mono">'+rb.toFixed(4)+'</td><td class="mono" style="color:var(--violet-deep);font-weight:600">'+rob.toFixed(4)+'</td><td class="mono" style="color:#0d6e4a">+'+(rob-rb).toFixed(4)+'</td></tr>';
   });
   mt.innerHTML = h;
-
   mk('chartSentOverallDonut', 'doughnut', {
     labels:['Netral','Negatif','Positif'],
     datasets:[{data:[SENTIMENT_OVERALL.Netral,SENTIMENT_OVERALL.Negatif,SENTIMENT_OVERALL.Positif], backgroundColor:['#e8e4f3','#e0457a','#1ea672'], borderColor:'#fff', borderWidth:3}]
   }, {plugins:{legend:{position:'bottom'}}});
-
   const pctSorted = SENTIMENT_PER_BRAND_PCT.slice().sort((a,b)=>b.Positif-a.Positif).filter(d=>activeBrands.has(d.Brand) || d.Brand==='iPhone');
   mk('chartSentPctBrand', 'bar', {
     labels: pctSorted.map(d=>d.Brand),
@@ -1067,7 +1162,6 @@ function renderSentiment(){
       {label:'Negatif %', data:pctSorted.map(d=>d.Negatif), backgroundColor:'#e0457a', borderRadius:4, borderSkipped:false},
     ]
   }, {indexAxis:'y'});
-
   const insights = [
     {cls:'c-green', num:'Vivo', lbl:'Brand paling positif (26,9% komentar)'},
     {cls:'c-rose', num:'Realme', lbl:'Brand paling negatif (33,6% komentar)'},
@@ -1076,7 +1170,6 @@ function renderSentiment(){
   ];
   document.getElementById('sentimentInsights').innerHTML = insights.map(i=>
     '<div class="insight-mini '+i.cls+'"><div class="insight-num">'+i.num+'</div><div class="insight-lbl">'+i.lbl+'</div></div>').join('');
-
   const absSorted = SENTIMENT_PER_BRAND_COUNT.slice().sort((a,b)=>(b.Positif+b.Netral+b.Negatif)-(a.Positif+a.Netral+a.Negatif));
   mk('chartSentAbsBrand', 'bar', {
     labels: absSorted.map(d=>d.Brand),
@@ -1086,7 +1179,6 @@ function renderSentiment(){
       {label:'Negatif', data:absSorted.map(d=>d.Negatif), backgroundColor:'#e0457a', borderRadius:3},
     ]
   }, {scales:{x:{stacked:true},y:{stacked:true}}});
-
   const rawSorted = RAW_SENTIMENT_SCORE.slice().sort((a,b)=>b.weighted_sentiment-a.weighted_sentiment);
   mk('chartRawVsWeighted', 'bar', {
     labels: rawSorted.map(d=>d.Brand),
@@ -1095,16 +1187,12 @@ function renderSentiment(){
       {label:'Weighted Score', data:rawSorted.map(d=>d.weighted_sentiment), backgroundColor:'#6d4fe0', borderRadius:4},
     ]
   }, {indexAxis:'y'});
-
   document.getElementById('rankUpList').innerHTML = RANK_CHANGES.naik.map(r=>
     '<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:5px 0;border-bottom:1px solid var(--line-soft)"><span style="font-weight:500">'+r.Brand+'</span><span class="pill pill-up">#'+r.from+' → #'+r.to+' (+'+r.change+')</span></div>').join('');
   document.getElementById('rankDownList').innerHTML = RANK_CHANGES.turun.map(r=>
     '<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:5px 0;border-bottom:1px solid var(--line-soft)"><span style="font-weight:500">'+r.Brand+'</span><span class="pill pill-down">#'+r.from+' → #'+r.to+' ('+r.change+')</span></div>').join('');
 }
 
-// ═══════════════════════════════════════════════════════════
-// PAGE 4: TEMPORAL
-// ═══════════════════════════════════════════════════════════
 function renderTemporal(){
   mk('chartHourly', 'line', {
     labels: HOURLY_DIST.map(d=>d.jam+':00'),
@@ -1115,11 +1203,9 @@ function renderTemporal(){
       pointBackgroundColor: HOURLY_DIST.map(d=>d.jam===16?'#e0457a':'#6d4fe0'),
     }]
   }, {plugins:{legend:{display:false}}});
-
   const maxDaily = Math.max(...DAILY_DIST.map(d=>d.count));
   document.getElementById('dailyTimeline').innerHTML = DAILY_DIST.map(d=>
     '<div class="timeline-day'+(d.count===maxDaily?' peak':'')+'"><div class="timeline-day-name">'+d.hari+'</div><div class="timeline-day-val">'+d.count.toLocaleString()+'</div></div>').join('');
-
   const insights = [
     {cls:'c-violet', num:'16:00', lbl:'Jam paling aktif (682 komentar)'},
     {cls:'c-blue', num:'03:00', lbl:'Jam paling sepi (61 komentar)'},
@@ -1130,28 +1216,22 @@ function renderTemporal(){
     '<div class="insight-mini '+i.cls+'"><div class="insight-num">'+i.num+'</div><div class="insight-lbl">'+i.lbl+'</div></div>').join('');
 }
 
-// ═══════════════════════════════════════════════════════════
-// PAGE 5: ECOMMERCE
-// ═══════════════════════════════════════════════════════════
 function renderEcommerce(){
   const plats = Object.keys(PLATFORM_RAW).filter(p=>activePlatforms.has(p));
   mk('chartPlatRaw', 'bar', {
     labels: plats,
     datasets:[{data: plats.map(p=>PLATFORM_RAW[p]), backgroundColor: plats.map(p=>PLATFORM_COLORS[p]), borderRadius:8, borderSkipped:false}]
   }, {plugins:{legend:{display:false}, title:{display:true, text:'Total Mentah ⚠ Bias jumlah listing', color:'#a82255', font:{size:11, weight:600}}}});
-
   mk('chartPlatNorm', 'bar', {
     labels: plats,
     datasets:[{data: plats.map(p=>PLATFORM_NORM[p]), backgroundColor: plats.map(p=>PLATFORM_COLORS[p]), borderRadius:8, borderSkipped:false}]
   }, {plugins:{legend:{display:false}, title:{display:true, text:'Per Listing ✓ Perbandingan adil', color:'#0d6e4a', font:{size:11, weight:600}}}});
-
   const data = filteredEC();
   const sorted = data.slice().sort((a,b)=>b.total_terjual-a.total_terjual);
   mk('chartBrandEfficiency', 'bar', {
     labels: sorted.map(d=>d.Brand),
     datasets:[{data: sorted.map(d=>d.total_terjual), backgroundColor: sorted.map(d=>BRAND_COLORS[d.Brand]||'#6d4fe0'), borderRadius:7, borderSkipped:false}]
   }, {indexAxis:'y', plugins:{legend:{display:false}}});
-
   mk('chartScatterHarga', 'scatter', {
     datasets: data.map(d=>({
       label:d.Brand,
@@ -1159,7 +1239,6 @@ function renderEcommerce(){
       backgroundColor:(BRAND_COLORS[d.Brand]||'#6d4fe0')+'cc', pointRadius:9, pointHoverRadius:12
     }))
   }, {plugins:{legend:{position:'bottom', labels:{boxWidth:8,font:{size:9.5}}}}, scales:{x:{title:{display:true,text:'Harga (juta Rp)'}}, y:{title:{display:true,text:'Total Terjual'}}}});
-
   const tbl = document.getElementById('ecTable');
   let h = '<tr><th>Brand</th><th>Listing</th><th>Avg Harga</th><th>Total Terjual</th><th>Per Listing</th></tr>';
   sorted.forEach(d=>{
@@ -1172,9 +1251,6 @@ function renderEcommerce(){
   tbl.innerHTML = h;
 }
 
-// ═══════════════════════════════════════════════════════════
-// PAGE 6: CORRELATION
-// ═══════════════════════════════════════════════════════════
 function renderCorrelation(){
   const c1 = CORRELATIONS.sentiment_vs_terjual, c2 = CORRELATIONS.harga_vs_terjual;
   document.getElementById('corrStatsBox1').innerHTML =
@@ -1187,7 +1263,6 @@ function renderCorrelation(){
     '<div class="mono" style="font-size:22px;font-weight:700;color:#a82255">r = '+c2.r+'</div>' +
     '<div style="font-size:11.5px;color:var(--ink-soft);margin-top:4px">p = '+c2.p+' — <b>tidak signifikan</b> (p &gt; 0.05)</div>' +
     '<div style="font-size:11px;color:var(--ink-faint);margin-top:6px">'+c2.label+'</div></div>';
-
   const data = filteredRanked().filter(d=>d.composite_score);
   const sorted = data.slice().sort((a,b)=>b.composite_score-a.composite_score);
   const insights = [
@@ -1198,7 +1273,6 @@ function renderCorrelation(){
   ];
   document.getElementById('corrInsights').innerHTML = insights.map(i=>
     '<div class="insight-mini '+i.cls+'"><div class="insight-num">'+i.num+'</div><div class="insight-lbl">'+i.lbl+'</div></div>').join('');
-
   mk('chartComposite', 'bar', {
     labels: sorted.map(d=>d.Brand),
     datasets:[{
@@ -1209,9 +1283,6 @@ function renderCorrelation(){
   }, {indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{min:0,max:0.8}}});
 }
 
-// ═══════════════════════════════════════════════════════════
-// PAGE 7: GAP
-// ═══════════════════════════════════════════════════════════
 const QUAD_INFO = {
   'Star Brand': {icon:'★', desc:'Sentimen tinggi & penjualan tinggi — posisi pasar sudah optimal.', strat:'Pertahankan kualitas, perluas segmen harga, manfaatkan sentimen positif untuk word-of-mouth.'},
   'Hidden Gem': {icon:'◆', desc:'Sentimen mendekati netral/positif tapi penjualan masih rendah — peluang belum tergarap.', strat:'Tingkatkan visibility iklan, kolaborasi reviewer, optimalkan listing & harga kompetitif.'},
@@ -1228,7 +1299,6 @@ function renderGap(){
       backgroundColor:(BRAND_COLORS[d.Brand]||'#6d4fe0')+'bb', borderColor:BRAND_COLORS[d.Brand]||'#6d4fe0', borderWidth:1.5
     }))
   }, {plugins:{legend:{position:'bottom', labels:{boxWidth:8,font:{size:9.5}}}}, scales:{x:{title:{display:true,text:'Weighted Sentiment'}}, y:{title:{display:true,text:'Total Terjual'}}}});
-
   const quadClass = {'Star Brand':'quad-star','Hidden Gem':'quad-gem','Overrated':'quad-over','Underperformer':'quad-need'};
   const order = ['Star Brand','Hidden Gem','Overrated','Underperformer'];
   document.getElementById('quadGrid').innerHTML = order.map(q=>{
@@ -1239,7 +1309,6 @@ function renderGap(){
       '<div class="quad-brands">'+pills+'</div><div class="quad-desc">'+info.desc+'</div>' +
       '<div class="quad-strat"><b>Strategi:</b> '+info.strat+'</div></div>';
   }).join('');
-
   const et = document.getElementById('excludedTable');
   let h = '<tr><th>Brand</th><th>Jumlah Komentar</th><th>Kuadran (jika dimasukkan)</th></tr>';
   EXCLUDED_BRANDS.forEach(d=>{
@@ -1249,8 +1318,225 @@ function renderGap(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// PAGE 8: CONCLUSION
+// WORDCLOUD RENDERER — canvas-based word cloud
 // ═══════════════════════════════════════════════════════════
+let wcMode = 'all';
+let wcSub = null;
+
+const WC_PALETTES = {
+  all:      ['#6d4fe0','#3a7bf2','#1ea672','#d68a1a','#e0457a','#1ea6c9','#8a5cf2','#52c4a0'],
+  channel:  {
+    'gadgetin':    ['#6d4fe0','#4c2da3','#8a5cf2','#a380ff','#c9b8ff'],
+    'Jagat Review':['#3a7bf2','#1d4fa8','#5b9bd5','#7fc4ff','#b8d8ff'],
+    'Pixa Focus ID':['#1ea672','#0d6e4a','#52c4a0','#7fd4b8','#b8f0e0'],
+    'DKID Media':  ['#d68a1a','#8a5a0d','#f2a93a','#ffd479','#ffe8b8'],
+  },
+  brand: {
+    'Samsung':'#3a7bf2','Xiaomi':'#f2a93a','Infinix':'#1ea672','Vivo':'#e0457a',
+    'Oppo':'#1ea6c9','Realme':'#c9962f','iPhone':'#1a1530','Asus':'#e07840',
+    'Tecno':'#8a5cf2',
+  }
+};
+
+function getWcWords(){
+  if(wcMode==='all') return WC_ALL;
+  if(wcMode==='channel'){
+    const key = wcSub || Object.keys(WC_CHANNEL)[0];
+    return WC_CHANNEL[key] || WC_ALL;
+  }
+  if(wcMode==='brand'){
+    const key = wcSub || Object.keys(WC_BRAND)[0];
+    return WC_BRAND[key] || WC_ALL;
+  }
+  return WC_ALL;
+}
+
+function getWcPalette(){
+  if(wcMode==='all') return WC_PALETTES.all;
+  if(wcMode==='channel'){
+    const key = wcSub || Object.keys(WC_CHANNEL)[0];
+    return WC_PALETTES.channel[key] || WC_PALETTES.all;
+  }
+  if(wcMode==='brand'){
+    const key = wcSub || Object.keys(WC_BRAND)[0];
+    const c = WC_PALETTES.brand[key] || '#6d4fe0';
+    // Generate shades
+    return [c, c+'dd', c+'bb', c+'99', c+'77', '#1a1530', '#5b5470', '#9a93ad'];
+  }
+  return WC_PALETTES.all;
+}
+
+function setWcMode(mode, btn){
+  wcMode = mode;
+  wcSub = null;
+  document.querySelectorAll('.wc-mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  // Show/hide sub-row
+  const subRow = document.getElementById('wcSubRow');
+  if(mode==='channel'){
+    subRow.style.display='flex';
+    const keys = Object.keys(WC_CHANNEL);
+    wcSub = keys[0];
+    subRow.innerHTML = keys.map((k,i)=>
+      '<button class="wc-sub-btn'+(i===0?' active':'')+'" onclick="setWcSub(\''+k+'\',this)">'+k+'</button>'
+    ).join('');
+  } else if(mode==='brand'){
+    subRow.style.display='flex';
+    const keys = Object.keys(WC_BRAND);
+    wcSub = keys[0];
+    subRow.innerHTML = keys.map((k,i)=>
+      '<button class="wc-sub-btn'+(i===0?' active':'')+'" onclick="setWcSub(\''+k+'\',this)" style="border-left:3px solid '+(BRAND_COLORS[k]||'#888')+'">'+k+'</button>'
+    ).join('');
+  } else {
+    subRow.style.display='none';
+    subRow.innerHTML='';
+  }
+  drawWordCloud();
+  renderWcTop20();
+  updateWcInfo();
+}
+
+function setWcSub(key, btn){
+  wcSub = key;
+  document.querySelectorAll('.wc-sub-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  drawWordCloud();
+  renderWcTop20();
+  updateWcInfo();
+}
+
+function updateWcInfo(){
+  const el = document.getElementById('wcInfo');
+  if(!el) return;
+  if(wcMode==='all'){
+    el.textContent = 'Menampilkan kata-kata paling sering muncul dari seluruh 7.412 komentar YouTube (setelah cleaning & stopword removal).';
+  } else if(wcMode==='channel'){
+    const cnt = CHANNEL_DATA.find(c=>c.channel===wcSub);
+    el.textContent = 'Menampilkan kata dominan dari channel "'+(wcSub||'-')+'" ('+(cnt?cnt.total.toLocaleString():'-')+' komentar).';
+  } else if(wcMode==='brand'){
+    const cnt = BRAND_COMMENT_DIST.find(b=>b.Brand===wcSub);
+    el.textContent = 'Menampilkan kata dominan dari komentar yang menyebut brand "'+(wcSub||'-')+'" ('+(cnt?cnt.total.toLocaleString():'-')+' komentar).';
+  }
+}
+
+function drawWordCloud(){
+  const canvas = document.getElementById('wcCanvas');
+  if(!canvas) return;
+  const tooltip = document.getElementById('wcTooltip');
+  const words = getWcWords().slice().sort((a,b)=>b.f-a.f);
+  const palette = getWcPalette();
+  const maxF = words[0].f;
+  const minF = words[words.length-1].f;
+
+  // Responsive canvas width
+  const W = canvas.parentElement.clientWidth - 40 || 800;
+  const H = 420;
+  canvas.width = W;
+  canvas.height = H;
+  canvas.style.width = W+'px';
+  canvas.style.height = H+'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  // Font size range
+  const fMin = 11, fMax = 58;
+  function fontSize(f){ return fMin + ((f-minF)/(maxF-minF||1))*(fMax-fMin); }
+  function pickColor(i){ return palette[i % palette.length]; }
+
+  // Simple spiral placement
+  const placed = [];
+  function overlaps(x,y,w,h){
+    return placed.some(p=>!(x>p.x+p.w||x+w<p.x||y>p.y+p.h||y+h<p.y));
+  }
+
+  const wordMeta = [];
+  const MAX_WORDS = Math.min(words.length, 60);
+
+  for(let i=0;i<MAX_WORDS;i++){
+    const word = words[i];
+    const fs = fontSize(word.f);
+    ctx.font = `${Math.round(fs)}px "Inter", sans-serif`;
+    const tw = ctx.measureText(word.w).width;
+    const th = fs * 1.2;
+
+    // Spiral from center
+    let placed_ok = false;
+    const cx = W/2, cy = H/2;
+    for(let r=0;r<Math.max(W,H);r+=3){
+      const steps = Math.max(8, Math.round(2*Math.PI*r/8));
+      for(let s=0;s<steps;s++){
+        const angle = (2*Math.PI*s/steps) + (i*0.618*Math.PI);
+        const x = cx + r*Math.cos(angle) - tw/2;
+        const y = cy + r*Math.sin(angle) - th/2;
+        if(x<4||y<4||x+tw>W-4||y+th>H-4) continue;
+        if(!overlaps(x,y-th,tw,th)){
+          placed.push({x,y:y-th,w:tw,h:th});
+          const color = pickColor(i);
+          ctx.fillStyle = color;
+          ctx.globalAlpha = 0.88 + 0.12*(word.f/maxF);
+          ctx.font = `${i<5?'700':'500'} ${Math.round(fs)}px "Inter", sans-serif`;
+          ctx.fillText(word.w, x, y);
+          ctx.globalAlpha = 1;
+          wordMeta.push({word:word.w, freq:word.f, x, y:y-th, w:tw, h:th});
+          placed_ok = true;
+          break;
+        }
+      }
+      if(placed_ok) break;
+    }
+  }
+
+  // Tooltip hover
+  canvas.onmousemove = function(e){
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    let hit = null;
+    for(const m of wordMeta){
+      if(mx>=m.x && mx<=m.x+m.w && my>=m.y && my<=m.y+m.h){ hit=m; break; }
+    }
+    if(hit){
+      tooltip.style.display='block';
+      tooltip.style.left=(e.clientX+14)+'px';
+      tooltip.style.top=(e.clientY-10)+'px';
+      tooltip.textContent = hit.word+' — frekuensi: '+hit.freq.toLocaleString();
+      canvas.style.cursor='pointer';
+    } else {
+      tooltip.style.display='none';
+      canvas.style.cursor='default';
+    }
+  };
+  canvas.onmouseleave = function(){ tooltip.style.display='none'; };
+}
+
+function renderWcTop20(){
+  const words = getWcWords().slice().sort((a,b)=>b.f-a.f).slice(0,20);
+  const palette = getWcPalette();
+  mk('chartWcTop20','bar',{
+    labels: words.map(d=>d.w),
+    datasets:[{
+      data: words.map(d=>d.f),
+      backgroundColor: words.map((_,i)=>palette[i%palette.length]+(i<5?'':'99')),
+      borderRadius:6, borderSkipped:false
+    }]
+  },{indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{title:{display:true,text:'Frekuensi'}}}});
+}
+
+function renderWordcloud(){
+  wcMode = 'all';
+  wcSub = null;
+  // Reset mode buttons
+  setTimeout(()=>{
+    document.querySelectorAll('.wc-mode-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+    const subRow = document.getElementById('wcSubRow');
+    if(subRow) subRow.style.display='none';
+    drawWordCloud();
+    renderWcTop20();
+    updateWcInfo();
+  }, 50);
+}
+
 function renderConclusion(){
   const summary = [
     {q:'Apakah jumlah brand di YouTube = di e-commerce?', a:'Tidak — hanya 11 dari 21 brand RoBERTa punya data e-commerce lengkap'},
@@ -1265,7 +1551,6 @@ function renderConclusion(){
   let h = '<tr><th>Pertanyaan Bisnis</th><th>Insight / Jawaban</th></tr>';
   summary.forEach(s=>{ h += '<tr><td style="font-weight:500">'+s.q+'</td><td style="color:var(--ink-soft)">'+s.a+'</td></tr>'; });
   document.getElementById('summaryTable').innerHTML = h;
-
   const top5 = FINAL_RANKED.filter(d=>d.composite_score).sort((a,b)=>b.composite_score-a.composite_score).slice(0,5);
   mk('chartFinalTop5', 'bar', {
     labels: top5.map(d=>d.Brand),
@@ -1276,7 +1561,11 @@ function renderConclusion(){
 // ═══════════════════════════════════════════════════════════
 // ROUTER
 // ═══════════════════════════════════════════════════════════
-const PAGE_RENDERERS = { overview:renderOverview, volume:renderVolume, sentiment:renderSentiment, temporal:renderTemporal, ecommerce:renderEcommerce, correlation:renderCorrelation, gap:renderGap, conclusion:renderConclusion };
+const PAGE_RENDERERS = {
+  overview:renderOverview, volume:renderVolume, sentiment:renderSentiment,
+  temporal:renderTemporal, ecommerce:renderEcommerce, correlation:renderCorrelation,
+  gap:renderGap, wordcloud:renderWordcloud, conclusion:renderConclusion
+};
 let currentPage = 'overview';
 
 function renderCurrentPage(){
@@ -1300,7 +1589,7 @@ function goToPage(name){
 }
 
 // ═══════════════════════════════════════════════════════════
-// SEARCH
+// SEARCH — tambah wordcloud ke index
 // ═══════════════════════════════════════════════════════════
 const SEARCH_INDEX = FINAL_RANKED.map(d=>({type:'brand', label:d.Brand, action:()=>{goToPage('sentiment');}}))
   .concat([
@@ -1311,6 +1600,7 @@ const SEARCH_INDEX = FINAL_RANKED.map(d=>({type:'brand', label:d.Brand, action:(
     {type:'halaman', label:'E-Commerce', action:()=>goToPage('ecommerce')},
     {type:'halaman', label:'Korelasi & Composite', action:()=>goToPage('correlation')},
     {type:'halaman', label:'Gap Analysis', action:()=>goToPage('gap')},
+    {type:'halaman', label:'Word Cloud', action:()=>goToPage('wordcloud')},
     {type:'halaman', label:'Kesimpulan', action:()=>goToPage('conclusion')},
     {type:'kuadran', label:'Star Brand', action:()=>goToPage('gap')},
     {type:'kuadran', label:'Hidden Gem', action:()=>goToPage('gap')},
@@ -1320,6 +1610,9 @@ const SEARCH_INDEX = FINAL_RANKED.map(d=>({type:'brand', label:d.Brand, action:(
     {type:'metrik', label:'Composite Score', action:()=>goToPage('correlation')},
     {type:'metrik', label:'Confusion Matrix RoBERTa', action:()=>goToPage('sentiment')},
     {type:'metrik', label:'Jam Paling Aktif', action:()=>goToPage('temporal')},
+    {type:'fitur', label:'Word Cloud Semua Komentar', action:()=>goToPage('wordcloud')},
+    {type:'fitur', label:'Word Cloud Per Channel', action:()=>goToPage('wordcloud')},
+    {type:'fitur', label:'Word Cloud Per Brand', action:()=>goToPage('wordcloud')},
   ]);
 
 const searchInput = document.getElementById('globalSearch');
@@ -1338,12 +1631,14 @@ searchInput.addEventListener('input', function(){
 document.addEventListener('click', e=>{ if(!e.target.closest('.search-wrap')) searchResults.style.display='none'; });
 searchInput.addEventListener('keydown', e=>{ if(e.key==='Escape'){ searchResults.style.display='none'; searchInput.value=''; } });
 
+// Redraw word cloud on resize
+window.addEventListener('resize', ()=>{ if(currentPage==='wordcloud') drawWordCloud(); });
+
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
 buildFilters();
 renderCurrentPage();
-
 </script>
 </body>
 </html>
