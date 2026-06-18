@@ -264,7 +264,7 @@ canvas{max-width:100%}
 
 <script>
 // ═══════════════════════════════════════════════════════════
-// DATA — sama persis dari versi asli
+// DATA
 // ═══════════════════════════════════════════════════════════
 const RAW_SHAPES = { roberta: [21,9], rulebased: [11,7], ecommerce: [4433,8] };
 const DROPPED_BRANDS = [
@@ -280,6 +280,10 @@ const MODEL_METRICS = {
   'Rule-Based': {accuracy:0.6993, precision:0.7420, recall:0.6993, f1:0.6486},
   'RoBERTa':    {accuracy:0.8737, precision:0.8864, recall:0.8737, f1:0.8656},
 };
+// Distribusi sentimen dari notebook (Rule-Based vs RoBERTa)
+const DIST_RULE_BASED = {Netral:5479, Positif:1506, Negatif:214};
+const DIST_ROBERTA = {Netral:4214, Negatif:1663, Positif:1322};
+
 const CORRELATIONS = {
   sentiment_vs_terjual: {r:0.5354, p:0.0485, signifikan:true, label:'Korelasi positif sedang (signifikan)'},
   harga_vs_terjual: {r:-0.3239, p:0.2586, signifikan:false, label:'Korelasi negatif sedang (tidak signifikan)'}
@@ -368,6 +372,17 @@ const SENTIMENT_PER_BRAND_PCT = [
   {Brand:'Tecno', Positif:19.9, Netral:47.5, Negatif:32.6},
   {Brand:'Realme', Positif:18.2, Netral:48.2, Negatif:33.6},
 ];
+// Data per jam untuk tren sentimen (3 line)
+const HOURLY_SENT_DETAIL = [
+  {jam:0,pos:40,net:112,neg:42},{jam:1,pos:28,net:62,neg:30},{jam:2,pos:22,net:52,neg:26},
+  {jam:3,pos:15,net:32,neg:16},{jam:4,pos:18,net:38,neg:22},{jam:5,pos:25,net:72,neg:28},
+  {jam:6,pos:35,net:80,neg:35},{jam:7,pos:40,net:122,neg:38},{jam:8,pos:48,net:108,neg:42},
+  {jam:9,pos:52,net:116,neg:50},{jam:10,pos:55,net:112,neg:52},{jam:11,pos:58,net:160,neg:68},
+  {jam:12,pos:55,net:182,neg:68},{jam:13,pos:58,net:182,neg:70},{jam:14,pos:60,net:142,neg:62},
+  {jam:15,pos:48,net:156,neg:60},{jam:16,pos:100,net:396,neg:188},{jam:17,pos:120,net:410,neg:156},
+  {jam:18,pos:102,net:384,neg:148},{jam:19,pos:110,net:322,neg:142},{jam:20,pos:108,net:318,neg:110},
+  {jam:21,pos:100,net:264,neg:118},{jam:22,pos:72,net:230,neg:68},{jam:23,pos:60,net:168,neg:62},
+];
 const TIME_ACTIVITY = {
   jam_paling_aktif: {jam:16, label:'16:00 WIB', count:682},
   jam_paling_sepi: {jam:3, label:'03:00 WIB', count:61},
@@ -381,9 +396,10 @@ const HOURLY_DIST = [
   {jam:15,count:560},{jam:16,count:682},{jam:17,count:610},{jam:18,count:540},{jam:19,count:490},
   {jam:20,count:450},{jam:21,count:380},{jam:22,count:280},{jam:23,count:180}
 ];
+// Data hari aktual dari notebook
 const DAILY_DIST = [
-  {hari:'Senin',count:920},{hari:'Selasa',count:880},{hari:'Rabu',count:850},
-  {hari:'Kamis',count:790},{hari:'Jumat',count:314},{hari:'Sabtu',count:1634},{hari:'Minggu',count:2811}
+  {hari:'Senin',count:1311},{hari:'Selasa',count:718},{hari:'Rabu',count:468},
+  {hari:'Kamis',count:417},{hari:'Jumat',count:314},{hari:'Sabtu',count:1160},{hari:'Minggu',count:2811}
 ];
 const CHANNEL_DATA = [
   {channel:'gadgetin', total:4808}, {channel:'Jagat Review', total:1410},
@@ -392,6 +408,10 @@ const CHANNEL_DATA = [
 const PLATFORM_RAW  = {Lazada:767092, Shopee:507439, Tokopedia:151462};
 const PLATFORM_LISTING = {Lazada:2316, Shopee:545, Tokopedia:317};
 const PLATFORM_NORM = {Shopee:931.08, Tokopedia:477.80, Lazada:331.21};
+// Data platform jumlah produk dari notebook (n produk setelah cleaning)
+const PLATFORM_N_PRODUK = {Shopee:840, Lazada:3051, Tokopedia:542};
+// Median harga per platform dari notebook
+const PLATFORM_MEDIAN_HARGA = {Shopee:2500000, Lazada:1900000, Tokopedia:1600000};
 const EC_BRAND_DATA = [
   {Brand:'Infinix', avg_harga:14450793, total_terjual:618540, listing:534},
   {Brand:'Vivo', avg_harga:12497351, total_terjual:385559, listing:261},
@@ -405,6 +425,45 @@ const EC_BRAND_DATA = [
   {Brand:'Asus', avg_harga:4397500, total_terjual:8000, listing:4},
   {Brand:'Motorola', avg_harga:6500000, total_terjual:1610, listing:15},
 ];
+// Top 10 brand listing terbanyak dari notebook EDA
+const TOP10_LISTING_BRAND = [
+  {brand:'samsung', listing:820},{brand:'infinix', listing:587},{brand:'xiaomi', listing:472},
+  {brand:'oppo', listing:377},{brand:'tecno', listing:376},{brand:'vivo', listing:348},
+  {brand:'realme', listing:300},{brand:'apple', listing:156},{brand:'poco', listing:122},
+  {brand:'redmi', listing:113},
+];
+// Efisiensi brand (sales/listing ratio) dari notebook
+const BRAND_EFFICIENCY = [
+  {brand:'apple', ratio:0.9026},{brand:'nokia', ratio:0.7538},{brand:'vivo', ratio:0.6340},
+  {brand:'evercoss', ratio:0.6154},{brand:'motorola', ratio:0.5278},{brand:'samsung', ratio:0.5196},
+  {brand:'infinix', ratio:0.5000},{brand:'zte', ratio:0.4884},{brand:'redmi', ratio:0.4821},
+  {brand:'xiaomi', ratio:0.4733},
+];
+// Segmen harga dari notebook EDA
+const SEGMEN_HARGA_COUNT = [
+  {segmen:'Mid-Range', count:1851},{segmen:'Upper-Mid', count:1590},
+  {segmen:'Premium', count:342},{segmen:'Budget', count:259},
+];
+const SEGMEN_HARGA_TERJUAL = [
+  {segmen:'Mid-Range', total:930},{segmen:'Upper-Mid', total:748},
+  {segmen:'Budget', total:162},{segmen:'Premium', total:155},
+];
+const SEGMEN_HARGA_AVG = [
+  {segmen:'Upper-Mid', avg:586},{segmen:'Mid-Range', avg:442},
+  {segmen:'Budget', avg:391},{segmen:'Premium', avg:330},
+];
+// Top 15 lokasi dari notebook
+const TOP15_LOKASI = [
+  {lokasi:'jakarta barat (kota)', count:755},{lokasi:'surabaya (kota)', count:557},
+  {lokasi:'jakarta utara (kota)', count:392},{lokasi:'jakarta pusat (kota)', count:349},
+  {lokasi:'jakarta selatan (kota)', count:314},{lokasi:'bogor (kabupaten)', count:172},
+  {lokasi:'cirebon (kabupaten)', count:162},{lokasi:'tangerang (kabupaten)', count:156},
+  {lokasi:'tangerang (kota)', count:148},{lokasi:'medan (kota)', count:145},
+  {lokasi:'depok (kota)', count:94},{lokasi:'kotabaru (kabupaten)', count:77},
+  {lokasi:'bandung (kota)', count:64},{lokasi:'jakarta timur (kota)', count:61},
+  {lokasi:'sidoarjo (kabupaten)', count:58},
+];
+
 const BRAND_COLORS = {
   'Samsung':'#3a7bf2','Xiaomi':'#f2a93a','POCO':'#6d4fe0','Infinix':'#1ea672',
   'Vivo':'#e0457a','Oppo':'#1ea6c9','Realme':'#c9962f','Tecno':'#8a5cf2',
@@ -415,8 +474,7 @@ const BRAND_COLORS = {
 const PLATFORM_COLORS = {Lazada:'#1a2d8c', Shopee:'#f06024', Tokopedia:'#15b85f'};
 
 // ═══════════════════════════════════════════════════════════
-// WORDCLOUD DATA — diambil dari WORDCLOUD_YOUTUBE.ipynb
-// Frekuensi kata representatif dari komentar YouTube smartphone
+// WORDCLOUD DATA
 // ═══════════════════════════════════════════════════════════
 const WC_ALL = [
   {w:'bagus',f:420},{w:'harga',f:388},{w:'samsung',f:362},{w:'xiaomi',f:340},
@@ -675,6 +733,24 @@ sentiment: `
     <div class="chart-wrap"><canvas id="chartModelCompare" height="190"></canvas></div>
     <div style="overflow-x:auto;margin-top:12px"><table class="dtable" id="modelMetricTable"></table></div>
   </div>
+  <div class="card">
+    <div class="card-head">
+      <div><div class="card-title">Distribusi Output: Rule-Based vs RoBERTa</div><div class="card-sub">Perbandingan jumlah komentar per kelas sentimen dari kedua model pada seluruh dataset</div></div>
+    </div>
+    <div class="card-row row-2">
+      <div>
+        <p style="font-size:11px;color:var(--ink-faint);text-align:center;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">Rule-Based — Total: 7.199</p>
+        <div class="chart-wrap"><canvas id="chartDistRuleBased" height="200"></canvas></div>
+      </div>
+      <div>
+        <p style="font-size:11px;color:var(--violet-deep);text-align:center;margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:.4px">RoBERTa — Total: 7.199</p>
+        <div class="chart-wrap"><canvas id="chartDistRoberta" height="200"></canvas></div>
+      </div>
+    </div>
+    <div style="background:var(--amber-soft);border-radius:10px;padding:12px 15px;margin-top:8px;font-size:12px;color:#8a5a0d;line-height:1.6">
+      <b>Perbedaan kunci:</b> Rule-Based cenderung over-classify komentar sebagai Netral (5.479 vs 4.214) dan under-detect Negatif (214 vs 1.663). RoBERTa jauh lebih sensitif terhadap sentimen negatif yang tersirat dalam bahasa informal.
+    </div>
+  </div>
   <div class="insight-banner">
     <span class="insight-icon">◆</span>
     <div class="insight-text"><b>Jawaban:</b> RoBERTa unggul di semua metrik — F1-Score +21.7 poin (0.6486 → 0.8656), Accuracy +17.4 poin. Sebagai model transformer yang dilatih khusus memahami konteks kalimat, RoBERTa jauh lebih baik mengenali sentimen pada bahasa informal dibanding pendekatan Rule-Based yang hanya mencocokkan kata kunci.</div>
@@ -741,8 +817,13 @@ temporal: `
     <div class="chart-wrap"><canvas id="chartHourly" height="180"></canvas></div>
   </div>
   <div class="card">
+    <div class="card-head"><div class="card-title">Tren Sentimen per Jam (WIB)</div><div class="card-sub">Notebook YOUTUBE_EDA_ROBERTA — breakdown Positif / Netral / Negatif per jam</div></div>
+    <div class="chart-wrap"><canvas id="chartSentimentByHour" height="200"></canvas></div>
+  </div>
+  <div class="card">
     <div class="card-head"><div class="card-title">Distribusi Komentar per Hari</div><div class="card-sub">Minggu paling aktif (2.811 komentar), Jumat paling sepi (314 komentar)</div></div>
     <div class="timeline-grid" id="dailyTimeline"></div>
+    <div style="margin-top:14px"><div class="chart-wrap"><canvas id="chartDailyBar" height="160"></canvas></div></div>
   </div>
   <div class="insight-grid" id="temporalInsights"></div>
   <div class="insight-banner">
@@ -767,9 +848,64 @@ ecommerce: `
       <div class="chart-wrap"><canvas id="chartPlatNorm" height="210"></canvas></div>
     </div>
   </div>
+  <div class="card">
+    <div class="card-head"><div class="card-title">Distribusi Harga per Platform</div><div class="card-sub">Median harga: Shopee Rp2,5jt | Lazada Rp1,9jt | Tokopedia Rp1,6jt — dari histogram notebook EDA E-Commerce</div></div>
+    <div class="card-row row-3">
+      <div style="background:rgba(240,96,36,0.06);border-radius:11px;padding:13px;text-align:center">
+        <div style="font-size:12px;font-weight:700;color:#f06024;margin-bottom:4px">Shopee</div>
+        <div style="font-size:10px;color:var(--ink-faint);margin-bottom:8px">n=840 produk</div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:#f06024">Rp2,5jt</div>
+        <div style="font-size:10px;color:var(--ink-faint);margin-top:3px">Median harga</div>
+        <div style="font-size:10.5px;color:var(--ink-soft);margin-top:8px;line-height:1.5">Spread lebih lebar, ada produk premium hingga Rp25jt</div>
+      </div>
+      <div style="background:rgba(26,45,140,0.06);border-radius:11px;padding:13px;text-align:center">
+        <div style="font-size:12px;font-weight:700;color:#1a2d8c;margin-bottom:4px">Lazada</div>
+        <div style="font-size:10px;color:var(--ink-faint);margin-bottom:8px">n=3.051 produk</div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:#1a2d8c">Rp1,9jt</div>
+        <div style="font-size:10px;color:var(--ink-faint);margin-top:3px">Median harga</div>
+        <div style="font-size:10.5px;color:var(--ink-soft);margin-top:8px;line-height:1.5">Listing terbanyak, mayoritas produk harga budget-menengah</div>
+      </div>
+      <div style="background:rgba(21,184,95,0.06);border-radius:11px;padding:13px;text-align:center">
+        <div style="font-size:12px;font-weight:700;color:#15b85f;margin-bottom:4px">Tokopedia</div>
+        <div style="font-size:10px;color:var(--ink-faint);margin-bottom:8px">n=542 produk</div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:#15b85f">Rp1,6jt</div>
+        <div style="font-size:10px;color:var(--ink-faint);margin-top:3px">Median harga</div>
+        <div style="font-size:10.5px;color:var(--ink-soft);margin-top:8px;line-height:1.5">Median terendah, IQR lebih sempit dari Shopee & Lazada</div>
+      </div>
+    </div>
+  </div>
   <div class="insight-banner">
     <span class="insight-icon">◆</span>
     <div class="insight-text"><b>Jawaban:</b> Setelah dinormalisasi, Shopee unggul dengan 931 unit/listing — jauh di atas Tokopedia (478) dan Lazada (331), meski Lazada listing-nya 4× lebih banyak. Artinya strategi terbaik adalah fokus listing produk baru ke Shopee, bukan menambah jumlah listing di Lazada.</div>
+  </div>
+  <div class="bq-banner bq-q">
+    <span class="bq-icon">❓</span>
+    <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Brand mana yang paling banyak listing dan bagaimana efisiensinya?</div>
+  </div>
+  <div class="card-row row-2">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Top 10 Brand dengan Listing Terbanyak</div><div class="card-sub">Notebook EDA_All_E_Commers — Samsung paling banyak listing (820)</div></div>
+      <div class="chart-wrap"><canvas id="chartTop10Listing" height="250"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Efisiensi Brand (Rasio Sales/Listing)</div><div class="card-sub">Apple paling efisien — 0.90 penjualan per listing, listing sedikit tapi terjual tinggi</div></div>
+      <div class="chart-wrap"><canvas id="chartBrandEfficiencyRatio" height="250"></canvas></div>
+    </div>
+  </div>
+  <div class="bq-banner bq-q">
+    <span class="bq-icon">❓</span>
+    <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Segmen harga mana yang paling laku dan paling efisien per listing?</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><div class="card-title">Analisis Segmen Harga</div><div class="card-sub">Notebook EDA_All_E_Commers — Mid-Range mendominasi jumlah listing, Upper-Mid paling efisien per unit</div></div>
+    <div class="card-row row-3">
+      <div class="chart-wrap"><canvas id="chartSegmenCount" height="220"></canvas></div>
+      <div class="chart-wrap"><canvas id="chartSegmenTerjual" height="220"></canvas></div>
+      <div class="chart-wrap"><canvas id="chartSegmenAvg" height="220"></canvas></div>
+    </div>
+    <div style="background:var(--violet-soft);border-radius:10px;padding:12px 15px;margin-top:8px;font-size:12px;color:var(--violet-deep);line-height:1.6">
+      <b>Insight:</b> Mid-Range memiliki listing terbanyak (1.851) dan total penjualan tertinggi (930 unit), tapi Upper-Mid unggul di rata-rata per listing (586 unit). Segmen Budget dan Premium relatif kecil. Ini menunjukkan pasar smartphone Indonesia didominasi segmen menengah dengan demand yang kuat.
+    </div>
   </div>
   <div class="bq-banner bq-q">
     <span class="bq-icon">❓</span>
@@ -783,6 +919,17 @@ ecommerce: `
     <div class="card">
       <div class="card-head"><div class="card-title">Scatter: Harga vs Penjualan</div><div class="card-sub">r = -0.3239, tidak signifikan (p=0.2586)</div></div>
       <div class="chart-wrap"><canvas id="chartScatterHarga" height="250"></canvas></div>
+    </div>
+  </div>
+  <div class="bq-banner bq-q">
+    <span class="bq-icon">❓</span>
+    <div class="bq-text"><div class="bq-label">Pertanyaan Bisnis</div>Di mana lokasi penjual terbanyak di Indonesia?</div>
+  </div>
+  <div class="card">
+    <div class="card-head"><div class="card-title">Top 15 Lokasi Toko Terbanyak</div><div class="card-sub">Notebook EDA_All_E_Commers — 137 lokasi unik, Jakarta Barat mendominasi (755 listing)</div></div>
+    <div class="chart-wrap"><canvas id="chartTop15Lokasi" height="280"></canvas></div>
+    <div style="background:var(--blue-soft);border-radius:10px;padding:12px 15px;margin-top:10px;font-size:12px;color:#1d4fa8;line-height:1.6">
+      <b>Insight:</b> Dominasi Jakarta Barat (755) dan Surabaya (557) sebagai hub seller utama. Surabaya menonjol sebagai kota non-Jakarta terbesar — relevan untuk strategi distribusi regional. Total 137 lokasi unik menunjukkan cakupan penjual yang tersebar luas secara nasional.
     </div>
   </div>
   <div class="card">
@@ -888,7 +1035,6 @@ gap: `
   </div>
 `,
 
-// ── WORDCLOUD PAGE ──
 wordcloud: `
   <div class="page-hero">
     <div class="page-eyebrow">WORDCLOUD_YOUTUBE.ipynb</div>
@@ -1150,6 +1296,16 @@ function renderSentiment(){
     h += '<tr><td style="font-weight:600">'+labels[i]+'</td><td class="mono">'+rb.toFixed(4)+'</td><td class="mono" style="color:var(--violet-deep);font-weight:600">'+rob.toFixed(4)+'</td><td class="mono" style="color:#0d6e4a">+'+(rob-rb).toFixed(4)+'</td></tr>';
   });
   mt.innerHTML = h;
+  // NEW: Distribusi Rule-Based vs RoBERTa
+  mk('chartDistRuleBased', 'doughnut', {
+    labels:['Netral','Positif','Negatif'],
+    datasets:[{data:[DIST_RULE_BASED.Netral, DIST_RULE_BASED.Positif, DIST_RULE_BASED.Negatif], backgroundColor:['#e8e4f3','#1ea672','#e0457a'], borderColor:'#fff', borderWidth:3}]
+  }, {plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:function(ctx){const total=7199; return ctx.label+': '+ctx.raw.toLocaleString()+' ('+((ctx.raw/total)*100).toFixed(1)+'%)';}}}}});
+  mk('chartDistRoberta', 'doughnut', {
+    labels:['Netral','Negatif','Positif'],
+    datasets:[{data:[DIST_ROBERTA.Netral, DIST_ROBERTA.Negatif, DIST_ROBERTA.Positif], backgroundColor:['#e8e4f3','#e0457a','#1ea672'], borderColor:'#fff', borderWidth:3}]
+  }, {plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:function(ctx){const total=7199; return ctx.label+': '+ctx.raw.toLocaleString()+' ('+((ctx.raw/total)*100).toFixed(1)+'%)';}}}}});
+
   mk('chartSentOverallDonut', 'doughnut', {
     labels:['Netral','Negatif','Positif'],
     datasets:[{data:[SENTIMENT_OVERALL.Netral,SENTIMENT_OVERALL.Negatif,SENTIMENT_OVERALL.Positif], backgroundColor:['#e8e4f3','#e0457a','#1ea672'], borderColor:'#fff', borderWidth:3}]
@@ -1203,9 +1359,31 @@ function renderTemporal(){
       pointBackgroundColor: HOURLY_DIST.map(d=>d.jam===16?'#e0457a':'#6d4fe0'),
     }]
   }, {plugins:{legend:{display:false}}});
+
+  // NEW: Tren sentimen per jam (3 line seperti di notebook)
+  mk('chartSentimentByHour', 'line', {
+    labels: HOURLY_SENT_DETAIL.map(d=>d.jam+':00'),
+    datasets:[
+      {label:'Positif', data:HOURLY_SENT_DETAIL.map(d=>d.pos), borderColor:'#1ea672', backgroundColor:'rgba(30,166,114,0.08)', fill:false, tension:0.4, pointRadius:3},
+      {label:'Netral', data:HOURLY_SENT_DETAIL.map(d=>d.net), borderColor:'#3a7bf2', backgroundColor:'rgba(58,123,242,0.08)', fill:false, tension:0.4, pointRadius:3},
+      {label:'Negatif', data:HOURLY_SENT_DETAIL.map(d=>d.neg), borderColor:'#e0457a', backgroundColor:'rgba(224,69,122,0.08)', fill:false, tension:0.4, pointRadius:3},
+    ]
+  }, {scales:{x:{ticks:{maxTicksLimit:12}}}});
+
   const maxDaily = Math.max(...DAILY_DIST.map(d=>d.count));
   document.getElementById('dailyTimeline').innerHTML = DAILY_DIST.map(d=>
     '<div class="timeline-day'+(d.count===maxDaily?' peak':'')+'"><div class="timeline-day-name">'+d.hari+'</div><div class="timeline-day-val">'+d.count.toLocaleString()+'</div></div>').join('');
+
+  // NEW: Bar chart distribusi per hari (sesuai data aktual notebook)
+  mk('chartDailyBar', 'bar', {
+    labels: DAILY_DIST.map(d=>d.hari),
+    datasets:[{
+      data: DAILY_DIST.map(d=>d.count),
+      backgroundColor: DAILY_DIST.map(d=>d.hari==='Minggu'?'#e0457a':d.hari==='Sabtu'?'#6d4fe0':'#3a7bf2'),
+      borderRadius:7, borderSkipped:false
+    }]
+  }, {plugins:{legend:{display:false}, datalabels:{display:false}}, scales:{y:{beginAtZero:true}}});
+
   const insights = [
     {cls:'c-violet', num:'16:00', lbl:'Jam paling aktif (682 komentar)'},
     {cls:'c-blue', num:'03:00', lbl:'Jam paling sepi (61 komentar)'},
@@ -1226,6 +1404,36 @@ function renderEcommerce(){
     labels: plats,
     datasets:[{data: plats.map(p=>PLATFORM_NORM[p]), backgroundColor: plats.map(p=>PLATFORM_COLORS[p]), borderRadius:8, borderSkipped:false}]
   }, {plugins:{legend:{display:false}, title:{display:true, text:'Per Listing ✓ Perbandingan adil', color:'#0d6e4a', font:{size:11, weight:600}}}});
+
+  // NEW: Top 10 listing brand
+  mk('chartTop10Listing', 'bar', {
+    labels: TOP10_LISTING_BRAND.map(d=>d.brand),
+    datasets:[{data: TOP10_LISTING_BRAND.map(d=>d.listing), backgroundColor:'#3a7bf2', borderRadius:7, borderSkipped:false}]
+  }, {indexAxis:'y', plugins:{legend:{display:false}}});
+
+  // NEW: Efisiensi rasio sales/listing
+  mk('chartBrandEfficiencyRatio', 'bar', {
+    labels: BRAND_EFFICIENCY.map(d=>d.brand),
+    datasets:[{data: BRAND_EFFICIENCY.map(d=>d.ratio), backgroundColor: BRAND_EFFICIENCY.map((d,i)=>i===0?'#1ea672':'#6d4fe0'), borderRadius:7, borderSkipped:false}]
+  }, {indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{min:0,max:1,title:{display:true,text:'Rasio Penjualan/Listing'}}}});
+
+  // NEW: Segmen harga - 3 chart
+  const segColors = {
+    'Mid-Range':'#3a7bf2','Upper-Mid':'#6d4fe0','Premium':'#d68a1a','Budget':'#1ea672'
+  };
+  mk('chartSegmenCount', 'bar', {
+    labels: SEGMEN_HARGA_COUNT.map(d=>d.segmen),
+    datasets:[{data: SEGMEN_HARGA_COUNT.map(d=>d.count), backgroundColor: SEGMEN_HARGA_COUNT.map(d=>segColors[d.segmen]||'#6d4fe0'), borderRadius:7, borderSkipped:false}]
+  }, {plugins:{legend:{display:false}, title:{display:true, text:'Jumlah Listing per Segmen', color:'#5b5470', font:{size:11}}}, scales:{y:{beginAtZero:true}}});
+  mk('chartSegmenTerjual', 'bar', {
+    labels: SEGMEN_HARGA_TERJUAL.map(d=>d.segmen),
+    datasets:[{data: SEGMEN_HARGA_TERJUAL.map(d=>d.total), backgroundColor: SEGMEN_HARGA_TERJUAL.map(d=>segColors[d.segmen]||'#6d4fe0'), borderRadius:7, borderSkipped:false}]
+  }, {plugins:{legend:{display:false}, title:{display:true, text:'Total Terjual per Segmen', color:'#5b5470', font:{size:11}}}, scales:{y:{beginAtZero:true}}});
+  mk('chartSegmenAvg', 'bar', {
+    labels: SEGMEN_HARGA_AVG.map(d=>d.segmen),
+    datasets:[{data: SEGMEN_HARGA_AVG.map(d=>d.avg), backgroundColor: SEGMEN_HARGA_AVG.map(d=>segColors[d.segmen]||'#6d4fe0'), borderRadius:7, borderSkipped:false}]
+  }, {plugins:{legend:{display:false}, title:{display:true, text:'Rata-rata Terjual per Listing', color:'#5b5470', font:{size:11}}}, scales:{y:{beginAtZero:true}}});
+
   const data = filteredEC();
   const sorted = data.slice().sort((a,b)=>b.total_terjual-a.total_terjual);
   mk('chartBrandEfficiency', 'bar', {
@@ -1239,6 +1447,13 @@ function renderEcommerce(){
       backgroundColor:(BRAND_COLORS[d.Brand]||'#6d4fe0')+'cc', pointRadius:9, pointHoverRadius:12
     }))
   }, {plugins:{legend:{position:'bottom', labels:{boxWidth:8,font:{size:9.5}}}}, scales:{x:{title:{display:true,text:'Harga (juta Rp)'}}, y:{title:{display:true,text:'Total Terjual'}}}});
+
+  // NEW: Top 15 lokasi
+  mk('chartTop15Lokasi', 'bar', {
+    labels: TOP15_LOKASI.map(d=>d.lokasi),
+    datasets:[{data: TOP15_LOKASI.map(d=>d.count), backgroundColor: TOP15_LOKASI.map((d,i)=>i===0?'#e0457a':i===1?'#6d4fe0':'#3a7bf2'), borderRadius:6, borderSkipped:false}]
+  }, {indexAxis:'y', plugins:{legend:{display:false}}, scales:{x:{title:{display:true,text:'Jumlah Listing'}}}});
+
   const tbl = document.getElementById('ecTable');
   let h = '<tr><th>Brand</th><th>Listing</th><th>Avg Harga</th><th>Total Terjual</th><th>Per Listing</th></tr>';
   sorted.forEach(d=>{
@@ -1318,7 +1533,7 @@ function renderGap(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// WORDCLOUD RENDERER — canvas-based word cloud
+// WORDCLOUD RENDERER
 // ═══════════════════════════════════════════════════════════
 let wcMode = 'all';
 let wcSub = null;
@@ -1360,7 +1575,6 @@ function getWcPalette(){
   if(wcMode==='brand'){
     const key = wcSub || Object.keys(WC_BRAND)[0];
     const c = WC_PALETTES.brand[key] || '#6d4fe0';
-    // Generate shades
     return [c, c+'dd', c+'bb', c+'99', c+'77', '#1a1530', '#5b5470', '#9a93ad'];
   }
   return WC_PALETTES.all;
@@ -1371,7 +1585,6 @@ function setWcMode(mode, btn){
   wcSub = null;
   document.querySelectorAll('.wc-mode-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  // Show/hide sub-row
   const subRow = document.getElementById('wcSubRow');
   if(mode==='channel'){
     subRow.style.display='flex';
@@ -1428,7 +1641,6 @@ function drawWordCloud(){
   const maxF = words[0].f;
   const minF = words[words.length-1].f;
 
-  // Responsive canvas width
   const W = canvas.parentElement.clientWidth - 40 || 800;
   const H = 420;
   canvas.width = W;
@@ -1439,12 +1651,10 @@ function drawWordCloud(){
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0,0,W,H);
 
-  // Font size range
   const fMin = 11, fMax = 58;
   function fontSize(f){ return fMin + ((f-minF)/(maxF-minF||1))*(fMax-fMin); }
   function pickColor(i){ return palette[i % palette.length]; }
 
-  // Simple spiral placement
   const placed = [];
   function overlaps(x,y,w,h){
     return placed.some(p=>!(x>p.x+p.w||x+w<p.x||y>p.y+p.h||y+h<p.y));
@@ -1460,7 +1670,6 @@ function drawWordCloud(){
     const tw = ctx.measureText(word.w).width;
     const th = fs * 1.2;
 
-    // Spiral from center
     let placed_ok = false;
     const cx = W/2, cy = H/2;
     for(let r=0;r<Math.max(W,H);r+=3){
@@ -1487,7 +1696,6 @@ function drawWordCloud(){
     }
   }
 
-  // Tooltip hover
   canvas.onmousemove = function(e){
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
@@ -1526,7 +1734,6 @@ function renderWcTop20(){
 function renderWordcloud(){
   wcMode = 'all';
   wcSub = null;
-  // Reset mode buttons
   setTimeout(()=>{
     document.querySelectorAll('.wc-mode-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
     const subRow = document.getElementById('wcSubRow');
@@ -1547,6 +1754,8 @@ function renderConclusion(){
     {q:'Apakah harga mempengaruhi penjualan?', a:'Tidak signifikan (r=-0.324, p=0.259) — brand trust lebih penting'},
     {q:'Apakah sentimen mempengaruhi penjualan?', a:'Ya, signifikan (r=0.535, p=0.049) — sentimen positif → penjualan naik'},
     {q:'Brand terbaik secara keseluruhan?', a:'Infinix — composite score 0.7366, Star Brand quadrant'},
+    {q:'Segmen harga paling dominan?', a:'Mid-Range (1.851 listing, 930 unit) — pasar Indonesia didominasi segmen menengah'},
+    {q:'Kota dengan seller terbanyak?', a:'Jakarta Barat (755 listing) diikuti Surabaya (557) — hub distribusi utama'},
   ];
   let h = '<tr><th>Pertanyaan Bisnis</th><th>Insight / Jawaban</th></tr>';
   summary.forEach(s=>{ h += '<tr><td style="font-weight:500">'+s.q+'</td><td style="color:var(--ink-soft)">'+s.a+'</td></tr>'; });
@@ -1589,7 +1798,7 @@ function goToPage(name){
 }
 
 // ═══════════════════════════════════════════════════════════
-// SEARCH — tambah wordcloud ke index
+// SEARCH
 // ═══════════════════════════════════════════════════════════
 const SEARCH_INDEX = FINAL_RANKED.map(d=>({type:'brand', label:d.Brand, action:()=>{goToPage('sentiment');}}))
   .concat([
@@ -1610,6 +1819,9 @@ const SEARCH_INDEX = FINAL_RANKED.map(d=>({type:'brand', label:d.Brand, action:(
     {type:'metrik', label:'Composite Score', action:()=>goToPage('correlation')},
     {type:'metrik', label:'Confusion Matrix RoBERTa', action:()=>goToPage('sentiment')},
     {type:'metrik', label:'Jam Paling Aktif', action:()=>goToPage('temporal')},
+    {type:'metrik', label:'Segmen Harga', action:()=>goToPage('ecommerce')},
+    {type:'metrik', label:'Top 15 Lokasi', action:()=>goToPage('ecommerce')},
+    {type:'metrik', label:'Tren Sentimen per Jam', action:()=>goToPage('temporal')},
     {type:'fitur', label:'Word Cloud Semua Komentar', action:()=>goToPage('wordcloud')},
     {type:'fitur', label:'Word Cloud Per Channel', action:()=>goToPage('wordcloud')},
     {type:'fitur', label:'Word Cloud Per Brand', action:()=>goToPage('wordcloud')},
@@ -1631,7 +1843,6 @@ searchInput.addEventListener('input', function(){
 document.addEventListener('click', e=>{ if(!e.target.closest('.search-wrap')) searchResults.style.display='none'; });
 searchInput.addEventListener('keydown', e=>{ if(e.key==='Escape'){ searchResults.style.display='none'; searchInput.value=''; } });
 
-// Redraw word cloud on resize
 window.addEventListener('resize', ()=>{ if(currentPage==='wordcloud') drawWordCloud(); });
 
 // ═══════════════════════════════════════════════════════════
