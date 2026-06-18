@@ -604,7 +604,7 @@ function renderSentiment(){
   const tbl = document.getElementById('weightedTable');
   let tblHtml = '<tr><th>#</th><th>Brand</th><th>Positif</th><th>Netral</th><th>Negatif</th><th>Total</th><th>Raw Score</th><th>Weighted Score</th></tr>';
   ranked.forEach(function(d,i){
-    tblHtml += '<tr style="cursor:pointer" onclick="selectBrand(\\''+d.Brand+'\\')">' +
+    tblHtml += '<tr class="row-clickable" data-brand="'+d.Brand+'" style="cursor:pointer">' +
       '<td style="color:var(--ink-faint)">'+(i+1)+'</td>' +
       '<td style="font-weight:600;color:'+(BRAND_COLORS[d.Brand]||'#1a1530')+'">'+d.Brand+'</td>' +
       '<td><span class="pill pill-pos">'+d.pos+'</span></td>' +
@@ -651,7 +651,7 @@ function renderEcommerce(){
   const tsorted = data.slice().sort(function(a,b){return b.total_terjual-a.total_terjual;});
   let tblHtml = '<tr><th>Brand</th><th>Listing</th><th>Avg Harga</th><th>Total Terjual</th><th>Per Listing</th></tr>';
   tsorted.forEach(function(d){
-    tblHtml += '<tr style="cursor:pointer" onclick="selectBrand(\\''+d.Brand+'\\')">' +
+    tblHtml += '<tr class="row-clickable" data-brand="'+d.Brand+'" style="cursor:pointer">' +
       '<td style="font-weight:600;color:'+(BRAND_COLORS[d.Brand]||'#1a1530')+'">'+d.Brand+'</td>' +
       '<td>'+d.listing.toLocaleString()+'</td>' +
       '<td>Rp'+(d.avg_harga/1e6).toFixed(1)+'jt</td>' +
@@ -729,7 +729,7 @@ function renderGap(){
     const brands = data.filter(function(d){return d.kuadran===q;});
     const info = QUAD_INFO[q];
     const brandPills = brands.map(function(b){
-      return '<span class="quad-pill" style="color:'+(BRAND_COLORS[b.Brand]||'#1a1530')+';cursor:pointer" onclick="selectBrand(\\''+b.Brand+'\\')">'+b.Brand+'</span>';
+      return '<span class="quad-pill row-clickable" data-brand="'+b.Brand+'" style="color:'+(BRAND_COLORS[b.Brand]||'#1a1530')+';cursor:pointer">'+b.Brand+'</span>';
     }).join('') || '<span style="font-size:11px;color:var(--ink-faint)">— tidak ada brand —</span>';
     return '<div class="quad-card '+quadClass[q]+'">' +
       '<div class="quad-head"><span class="quad-icon">'+info.icon+'</span><span class="quad-title">'+q+'</span></div>' +
@@ -798,6 +798,11 @@ searchInput.addEventListener('input', function(){
 });
 document.addEventListener('click', function(e){ if(!e.target.closest('.search-wrap')) searchResults.style.display='none'; });
 searchInput.addEventListener('keydown', function(e){ if(e.key==='Escape'){ searchResults.style.display='none'; searchInput.value=''; } });
+
+document.addEventListener('click', function(e){
+  const el = e.target.closest('.row-clickable');
+  if(el && el.dataset.brand){ selectBrand(el.dataset.brand); }
+});
 
 buildFilters();
 renderOverview();
