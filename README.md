@@ -6,7 +6,7 @@
 
 ## 🎯 Deskripsi Project
 
-Project ini menganalisis **7 dimensi Big Data (7V)** menggunakan dua sumber data utama:
+Project ini menganalisis **8 dimensi Big Data (8V)** menggunakan dua sumber data utama:
 
 | Sumber | Deskripsi | Jumlah Data |
 |--------|-----------|-------------|
@@ -16,6 +16,19 @@ Project ini menganalisis **7 dimensi Big Data (7V)** menggunakan dua sumber data
 **Pertanyaan riset utama:**
 > *Apakah brand smartphone yang mendapat sentimen positif di YouTube juga memiliki penjualan lebih tinggi di marketplace?*
 
+**8V Big Data yang dianalisis:**
+
+| No | Dimensi | Fokus Analisis |
+|----|---------|-----------------|
+| 1 | **Volume** | Jumlah data e-commerce & komentar YouTube yang diproses |
+| 2 | **Variety** | Ragam sumber (3 marketplace + 4 channel YouTube), format data |
+| 3 | **Velocity** | Kecepatan akumulasi komentar & listing produk dari waktu ke waktu |
+| 4 | **Value** | Nilai bisnis dari korelasi sentimen ↔ penjualan |
+| 5 | **Veracity** | Tingkat kebenaran & kebersihan data setelah preprocessing |
+| 6 | **Variability** | Inkonsistensi makna/sentimen pada konteks yang berbeda-beda |
+| 7 | **Validity** | Kesesuaian data dengan tujuan analisis (relevansi & struktur) |
+| 8 | **Visualization** | Representasi visual data melalui dashboard interaktif |
+
 ---
 
 ## 👥 Anggota Tim
@@ -24,7 +37,7 @@ Project ini menganalisis **7 dimensi Big Data (7V)** menggunakan dua sumber data
 |------|-------------|
 | Retno | Cleaning e-commerce, Korelasi & Gap Analysis, Laporan Value & Variability |
 | Zelga | Cleaning YouTube, RoBERTa Model, Laporan Volume |
-| Raissa | README, Laporan Variety & Veracity, EDA E-Commerce, Dashboard Interaktif, Control dan backup |
+| Raissa | README, Laporan Variety & Veracity, EDA E-Commerce, Dashboard Interaktif (HTML), Control dan backup |
 | Putri | EDA YouTube, Sentiment Analysis, Rule-Based Model, Laporan Validity |
 
 ---
@@ -38,6 +51,7 @@ project/
 │   ├── data_shopee_kotor.csv
 │   ├── data_lazada_kotor.csv
 │   ├── data_tokopedia_kotor.csv
+│   ├── gabungan_e-commerce_gadget.csv
 │   └── DATA_KOMEN_FULL_3_VIDEO.csv
 │
 ├── 📁 data_clean/                  # Data bersih hasil preprocessing
@@ -46,7 +60,7 @@ project/
 │   ├── data_tokopedia_clean.csv
 │   ├── ecommerce_clean_merged.csv  # Gabungan 3 platform
 │   ├── Youtubeclean_final.csv      # Data YouTube lengkap
-│   └── Youtube_sentiment.csv      # Data siap analisis sentimen
+│   └── Youtube_sentiment.csv       # Data siap analisis sentimen
 │
 ├── 📁 notebooks/                   # Jupyter Notebook per tahap
 │   ├── 01_preprocessing_shopee.ipynb
@@ -63,29 +77,23 @@ project/
 │   ├── 07_gap_analysis.ipynb
 │   └── 08_dashboard_preparation.ipynb
 │
-├── 📁 laporan/                     # Laporan 7V Big Data
+├── 📁 models/                      # Model hasil training & artefak model
+│   ├── rule_based_model/
+│   └── roberta_model/
+│
+├── 📁 laporan/                     # Laporan 8V Big Data
 │   ├── laporan_volume.md
 │   ├── laporan_variety.md
 │   ├── laporan_veracity.md
 │   ├── laporan_velocity.md
 │   ├── laporan_value.md
 │   ├── laporan_variability.md
-│   └── laporan_validity.md
+│   ├── laporan_validity.md
+│   └── laporan_visualization.md
 │
-├── 📁 assets/                      # Output visualisasi
-│   ├── dashboard_final.png
-│   ├── dashboard_preview.png
-│   ├── wordcloud_*.png
-│   └── heatmap_korelasi.png
+├── 📁 essai/                       # Catatan eksperimen, draft analisis & eksplorasi tambahan
 │
-├── 📁 dashboard/                   # Streamlit app
-│   └── app.py
-│
-├── 📁 results/                     # Output analisis final
-│   ├── sentiment_brand_agg.csv
-│   ├── final_brand_comparison.csv
-│   └── final_ranked.csv
-│
+├── index.html                      # Dashboard interaktif (HTML, CSS, JS)
 ├── README.md                       # File ini
 └── requirements.txt                # Dependensi Python
 ```
@@ -97,8 +105,8 @@ project/
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/<username>/<repo-name>.git
-cd <repo-name>
+git clone https://github.com/RaissaNadia/smartphone-bigdata-analysis.git
+cd smartphone-bigdata-analysis
 ```
 
 ### 2. Buat Virtual Environment (Direkomendasikan)
@@ -135,24 +143,35 @@ Jalankan notebook **sesuai urutan angka** di folder `notebooks/`:
 | 6-7 | `03_eda_*.ipynb` | Exploratory Data Analysis |
 | 8-9 | `04_sentiment_analysis.ipynb` | Analisis sentimen |
 | 10-11 | `05_*.ipynb` | Model & perbandingan |
-| 12-13 | `06_correlation_analysis.ipynb` | Korelasi & gap |
-| 14 | `08_dashboard_preparation.ipynb` | Persiapan dashboard |
+| 12-13 | `06_correlation_analysis.ipynb`, `07_gap_analysis.ipynb` | Korelasi & gap |
+| 14 | `08_dashboard_preparation.ipynb` | Persiapan data dashboard |
 
 ### 5. Jalankan Dashboard Interaktif
 
+Dashboard dibangun dengan **HTML, CSS, dan JavaScript murni** (tanpa server Python). Cukup buka file `index.html` langsung di browser:
+
 ```bash
-streamlit run dashboard/app.py
+# Buka langsung
+open index.html        # Mac
+start index.html       # Windows
+xdg-open index.html    # Linux
 ```
 
-Dashboard akan terbuka di browser: `http://localhost:8501`
+Atau jalankan local server sederhana agar fetch data (CSV/JSON) berjalan lancar:
+
+```bash
+python -m http.server 8000
+```
+
+Lalu akses di browser: `http://localhost:8000`
 
 ---
 
 ## 📊 Metodologi
 
 ```
-Data Raw ──► Preprocessing ──► EDA ──► Sentiment Analysis ──► Korelasi & Gap ──► Dashboard
-              (7V Big Data)          (Rule-Based + RoBERTa)   (Weighted Score)   (Streamlit)
+Data Raw ──► Preprocessing ──► EDA ──► Sentiment Analysis ──► Korelasi & Gap ──► Dashboard Interaktif (HTML)
+              (8V Big Data)          (Rule-Based + RoBERTa)   (Weighted Score)
 ```
 
 ### Pendekatan Analisis Sentimen
@@ -174,9 +193,10 @@ composite_score = (0.4 × weighted_sentiment) + (0.3 × normalized_terjual)
 
 ## 🔍 Highlight Temuan
 
-- **Brand terbaik**: Berdasarkan composite score (lihat `results/final_ranked.csv`)
+- **Brand terbaik**: Berdasarkan composite score, ditampilkan pada dashboard interaktif (`index.html`)
 - **Korelasi sentimen-penjualan**: Dianalisis di notebook `06_correlation_analysis.ipynb`
 - **Gap analysis**: Brand *overrated* vs *underrated* di `07_gap_analysis.ipynb`
+- **Visualisasi**: Seluruh temuan utama dirangkum secara interaktif di dashboard berbasis web (HTML/CSS/JS)
 
 ---
 
@@ -188,9 +208,10 @@ Lihat `requirements.txt` untuk daftar lengkap. Library utama:
 - `scikit-learn` — preprocessing & evaluasi model
 - `transformers` — model RoBERTa
 - `PySastrawi`, `nlp_id` — NLP Bahasa Indonesia
-- `matplotlib`, `seaborn`, `plotly` — visualisasi
-- `streamlit` — dashboard interaktif
+- `matplotlib`, `seaborn`, `plotly` — visualisasi & EDA
 - `wordcloud` — visualisasi kata
+
+> Dashboard interaktif **tidak menggunakan Streamlit**, melainkan dibangun langsung dengan HTML, CSS, dan JavaScript (`index.html`) agar bisa dibuka tanpa server backend.
 
 ---
 
@@ -199,3 +220,4 @@ Lihat `requirements.txt` untuk daftar lengkap. Library utama:
 - Data raw tidak di-push ke GitHub (ukuran besar). Hubungi tim untuk akses data.
 - Proses stemming YouTube membutuhkan waktu ±5 menit (7.000+ baris).
 - Model RoBERTa membutuhkan GPU untuk inferensi yang cepat.
+- Folder `essai/` berisi catatan eksperimen dan eksplorasi tambahan di luar pipeline utama.
