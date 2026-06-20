@@ -146,24 +146,37 @@ Jalankan notebook **sesuai urutan angka** di folder `notebooks/`:
 | 12-13 | `06_correlation_analysis.ipynb`, `07_gap_analysis.ipynb` | Korelasi & gap |
 | 14 | `08_dashboard_preparation.ipynb` | Persiapan data dashboard |
 
-### 5. Jalankan Dashboard Interaktif
+## 5. Akses Dashboard Interaktif
 
-Dashboard dibangun dengan **HTML, CSS, dan JavaScript murni** (tanpa server Python). Cukup buka file `index.html` langsung di browser:
+Dashboard telah berhasil dideploy menggunakan GitHub Pages sehingga dapat diakses secara online tanpa perlu instalasi atau konfigurasi tambahan.
+
+**Live Dashboard:**  
+https://raissanadia.github.io/smartphone-bigdata-analysis/
+
+Melalui dashboard ini, pengguna dapat mengeksplorasi hasil analisis data smartphone, visualisasi korelasi antar variabel, perhitungan composite score, serta berbagai insight yang diperoleh dari proses Big Data Analytics.
+
+### Menjalankan Secara Lokal (Opsional)
+
+Jika ingin melakukan pengembangan atau modifikasi dashboard secara mandiri, clone repository terlebih dahulu:
 
 ```bash
-# Buka langsung
-open index.html        # Mac
-start index.html       # Windows
-xdg-open index.html    # Linux
+git clone https://github.com/RaissaNadia/smartphone-bigdata-analysis.git
+cd smartphone-bigdata-analysis
 ```
 
-Atau jalankan local server sederhana agar fetch data (CSV/JSON) berjalan lancar:
+Karena dashboard menggunakan file CSV dan JSON yang diakses melalui JavaScript, disarankan menjalankannya menggunakan local server:
 
 ```bash
 python -m http.server 8000
 ```
 
-Lalu akses di browser: `http://localhost:8000`
+Kemudian buka browser dan akses:
+
+```text
+http://localhost:8000
+```
+
+> Catatan: Penggunaan local server membantu menghindari pembatasan keamanan browser (CORS) saat membaca file data lokal.
 
 ---
 
