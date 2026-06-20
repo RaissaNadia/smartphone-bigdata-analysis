@@ -10,8 +10,8 @@ Project ini menganalisis **8 dimensi Big Data (8V)** menggunakan dua sumber data
 
 | Sumber | Deskripsi | Jumlah Data |
 |--------|-----------|-------------|
-| 🛒 E-Commerce | Listing produk smartphone dari Shopee, Lazada, Tokopedia | 4.437 produk bersih |
-| 🎥 YouTube | Komentar dari 4 channel review gadget Indonesia | 7.412 komentar bersih |
+| 🛒 E-Commerce | Listing produk smartphone dari Shopee, Lazada, Tokopedia | 4.020 produk bersih |
+| 🎥 YouTube | Komentar dari 4 channel review gadget Indonesia | 7.199 komentar bersih |
 
 **Pertanyaan riset utama:**
 > *Apakah brand smartphone yang mendapat sentimen positif di YouTube juga memiliki penjualan lebih tinggi di marketplace?*
